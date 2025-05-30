@@ -137,8 +137,8 @@ function CategoryPage() {
           </div>
         </div>
 
-        <table className="min-w-full bg-white opacity-40 text-black border">
-          <thead className="bg-gray-300 text-slate-900 z-10">
+        <table className="min-w-full text-slate-200 bg-transparent opacity-90 border">
+          <thead className="bg-gray-700 text-slate-200 opacity-100 z-10">
             <tr>
               <th className="py-2 px-4 border border-gray-300">ID</th>
               <th className="py-2 px-4 border border-gray-300">Name</th>

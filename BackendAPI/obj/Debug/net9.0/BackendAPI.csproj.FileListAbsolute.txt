@@ -45,3 +45,4 @@
 /Users/amlanjyoti/testProject/BackendAPI/obj/Debug/net9.0/BackendAPI.pdb
 /Users/amlanjyoti/testProject/BackendAPI/obj/Debug/net9.0/BackendAPI.genruntimeconfig.cache
 /Users/amlanjyoti/testProject/BackendAPI/obj/Debug/net9.0/ref/BackendAPI.dll
+/Users/amlanjyoti/testProject/BackendAPI/obj/Debug/net9.0/BackendAPI.sourcelink.json

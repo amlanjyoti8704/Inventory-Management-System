@@ -1,8 +1,7 @@
-// File: Controllers/IssueController.cs
-
 using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
 using System.Data;
+using System.Collections.Generic;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -20,7 +19,6 @@ public class IssueController : ControllerBase
         return new MySqlConnection(_config.GetConnectionString("DefaultConnection"));
     }
 
-    // ✅ GET: /api/issue/items — returns available items
     [HttpGet("items")]
     public IActionResult GetItems()
     {
@@ -41,65 +39,53 @@ public class IssueController : ControllerBase
         return Ok(items);
     }
 
-    // ✅ POST: /api/issue — issue an item
+    // POST: Create a new issue request (status = 'pending'), no stock change here!
     [HttpPost]
-    public IActionResult IssueItem([FromBody] IssueRequest request)
+    public IActionResult CreateIssueRequest([FromBody] IssueRequest request)
     {
         using var conn = GetConnection();
         conn.Open();
-        using var transaction = conn.BeginTransaction();
         try
         {
-            // 1. Check available stock
-            var stockCmd = new MySqlCommand("SELECT quantity FROM consumableItems WHERE item_id = @item_id", conn);
-            stockCmd.Parameters.AddWithValue("@item_id", request.item_id);
-            var stock = Convert.ToInt32(stockCmd.ExecuteScalar());
+            var insertCmd = new MySqlCommand(@"
+                INSERT INTO issue_records 
+                (issued_to, department, quantity, item_id, issue_date, status, requested_by) 
+                VALUES (@issued_to, @department, @quantity, @item_id, NOW(), 'pending', @requested_by);", conn);
+            insertCmd.Parameters.AddWithValue("@issued_to", request.issued_to);
+            insertCmd.Parameters.AddWithValue("@department", request.department);
+            insertCmd.Parameters.AddWithValue("@quantity", request.quantity);
+            insertCmd.Parameters.AddWithValue("@item_id", request.item_id);
+            insertCmd.Parameters.AddWithValue("@requested_by", request.requested_by ?? "user");
+            insertCmd.ExecuteNonQuery();
 
-            if (stock < request.quantity)
-                return BadRequest("Insufficient stock");
-
-            // 2. Reduce stock
-            var updateStockCmd = new MySqlCommand("UPDATE consumableItems SET quantity = quantity - @qty WHERE item_id = @item_id", conn);
-            updateStockCmd.Parameters.AddWithValue("@qty", request.quantity);
-            updateStockCmd.Parameters.AddWithValue("@item_id", request.item_id);
-            updateStockCmd.ExecuteNonQuery();
-
-            // 3. Insert into issue_records
-            var insertIssueCmd = new MySqlCommand(@"INSERT INTO issue_records (issued_to, department, quantity)
-                                                    VALUES (@issued_to, @dept, @qty); SELECT LAST_INSERT_ID();", conn);
-            insertIssueCmd.Parameters.AddWithValue("@issued_to", request.issued_to);
-            insertIssueCmd.Parameters.AddWithValue("@dept", request.department);
-            insertIssueCmd.Parameters.AddWithValue("@qty", request.quantity);
-            var issue_id = Convert.ToInt32(insertIssueCmd.ExecuteScalar());
-
-            // 4. Insert into issued table
-            var insertIssuedCmd = new MySqlCommand("INSERT INTO issued (issue_id, item_id, issue_date) VALUES (@issue_id, @item_id, NOW())", conn);
-            insertIssuedCmd.Parameters.AddWithValue("@issue_id", issue_id);
-            insertIssuedCmd.Parameters.AddWithValue("@item_id", request.item_id);
-            insertIssuedCmd.ExecuteNonQuery();
-
-            transaction.Commit();
-            return Ok(new { message = "Item issued successfully" });
+            return Ok(new { message = "Request submitted successfully" });
         }
         catch (Exception ex)
         {
-            transaction.Rollback();
             return StatusCode(500, new { error = ex.Message });
         }
     }
 
-    // ✅ GET: /api/issue — list of all issued items
     [HttpGet]
-    public IActionResult GetIssuedItems()
+    public IActionResult GetIssuedItems([FromQuery] string? requested_by)
     {
         var issues = new List<object>();
         using var conn = GetConnection();
         conn.Open();
-        var cmd = new MySqlCommand(@"
-            SELECT ir.issue_id, ci.name AS item_name, ir.issued_to, ir.department, ir.quantity, i.issue_date
+
+        string query = @"
+            SELECT ir.issue_id, ci.name AS item_name, ir.issued_to, ir.department, ir.quantity,
+                   ir.issue_date, ir.status, ir.requested_by
             FROM issue_records ir
-            JOIN issued i ON ir.issue_id = i.issue_id
-            JOIN consumableItems ci ON i.item_id = ci.item_id", conn);
+            JOIN consumableItems ci ON ir.item_id = ci.item_id";
+
+        if (!string.IsNullOrEmpty(requested_by))
+            query += " WHERE ir.requested_by = @requested_by";
+
+        using var cmd = new MySqlCommand(query, conn);
+        if (!string.IsNullOrEmpty(requested_by))
+            cmd.Parameters.AddWithValue("@requested_by", requested_by);
+
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {
@@ -110,53 +96,74 @@ public class IssueController : ControllerBase
                 issued_to = reader["issued_to"],
                 department = reader["department"],
                 quantity = reader["quantity"],
-                issue_date = reader["issue_date"]
+                issue_date = reader["issue_date"],
+                status = reader["status"],
+                requested_by = reader["requested_by"]
             });
         }
         return Ok(issues);
     }
 
-    // ✅ DELETE: /api/issue/{id} — revoke an issue and restore stock
-    [HttpDelete("{id}")]
-    public IActionResult RevokeIssue(int id)
+    [HttpPut("decline/{id}")]
+    public IActionResult DeclineIssue(int id)
+    {
+        using var conn = GetConnection();
+        conn.Open();
+        try
+        {
+            var checkCmd = new MySqlCommand("SELECT COUNT(*) FROM issue_records WHERE issue_id = @id", conn);
+            checkCmd.Parameters.AddWithValue("@id", id);
+            var exists = Convert.ToInt32(checkCmd.ExecuteScalar()) > 0;
+
+            if (!exists)
+                return NotFound(new { error = "Request not found." });
+
+            var updateStatus = new MySqlCommand("UPDATE issue_records SET status = 'declined' WHERE issue_id = @id", conn);
+            updateStatus.Parameters.AddWithValue("@id", id);
+            updateStatus.ExecuteNonQuery();
+
+            return Ok(new { message = "Request declined." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    // PUT: Approve request and deduct stock
+    [HttpPut("approve/{id}")]
+    public IActionResult ApproveIssue(int id)
     {
         using var conn = GetConnection();
         conn.Open();
         using var transaction = conn.BeginTransaction();
         try
         {
-            // Get item_id and quantity
-            var getCmd = new MySqlCommand(@"
-                SELECT i.item_id, ir.quantity 
-                FROM issued i
-                JOIN issue_records ir ON i.issue_id = ir.issue_id
-                WHERE i.issue_id = @id", conn);
+            var getCmd = new MySqlCommand("SELECT quantity, item_id FROM issue_records WHERE issue_id = @id AND status = 'pending'", conn);
             getCmd.Parameters.AddWithValue("@id", id);
             using var reader = getCmd.ExecuteReader();
-            if (!reader.Read()) return NotFound(new { message = "Issue ID not found" });
+            if (!reader.Read()) return NotFound(new { error = "Pending request not found." });
 
-            int itemId = Convert.ToInt32(reader["item_id"]);
             int qty = Convert.ToInt32(reader["quantity"]);
+            int itemId = Convert.ToInt32(reader["item_id"]);
             reader.Close();
 
-            // 1. Delete from issued
-            var delIssued = new MySqlCommand("DELETE FROM issued WHERE issue_id = @id", conn);
-            delIssued.Parameters.AddWithValue("@id", id);
-            delIssued.ExecuteNonQuery();
+            var stockCmd = new MySqlCommand("SELECT quantity FROM consumableItems WHERE item_id = @item_id", conn);
+            stockCmd.Parameters.AddWithValue("@item_id", itemId);
+            int stock = Convert.ToInt32(stockCmd.ExecuteScalar());
+            if (stock < qty) return BadRequest(new { error = "Insufficient stock." });
 
-            // 2. Delete from issue_records
-            var delRecords = new MySqlCommand("DELETE FROM issue_records WHERE issue_id = @id", conn);
-            delRecords.Parameters.AddWithValue("@id", id);
-            delRecords.ExecuteNonQuery();
+            var updateStock = new MySqlCommand("UPDATE consumableItems SET quantity = quantity - @qty WHERE item_id = @item_id", conn);
+            updateStock.Parameters.AddWithValue("@qty", qty);
+            updateStock.Parameters.AddWithValue("@item_id", itemId);
+            updateStock.ExecuteNonQuery();
 
-            // 3. Restore stock
-            var restoreCmd = new MySqlCommand("UPDATE consumableItems SET quantity = quantity + @qty WHERE item_id = @item_id", conn);
-            restoreCmd.Parameters.AddWithValue("@qty", qty);
-            restoreCmd.Parameters.AddWithValue("@item_id", itemId);
-            restoreCmd.ExecuteNonQuery();
+            var updateStatus = new MySqlCommand("UPDATE issue_records SET status = 'approved', issue_date = NOW() WHERE issue_id = @id", conn);
+            updateStatus.Parameters.AddWithValue("@id", id);
+            updateStatus.ExecuteNonQuery();
 
             transaction.Commit();
-            return Ok(new { message = "Issue revoked and stock restored" });
+            return Ok(new { message = "Request approved and issued." });
         }
         catch (Exception ex)
         {
@@ -164,13 +171,42 @@ public class IssueController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
+    [HttpDelete("{id}")]
+    public IActionResult DeleteIssueRecord(int id)
+    {
+        try
+        {
+            using var conn = GetConnection();
+            conn.Open();
+
+            string query = "DELETE FROM issue_records WHERE issue_id = @id";
+            using var cmd = new MySqlCommand(query, conn);
+            cmd.Parameters.AddWithValue("@id", id);
+            int rowsAffected = cmd.ExecuteNonQuery();
+
+            if (rowsAffected > 0)
+            {
+                return Ok(new { message = "Issue record deleted successfully." });
+            }
+            else
+            {
+                return NotFound(new { error = "Issue record not found." });
+            }
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
 }
 
-// ✅ Request model for issuing
+// ✅ Model
 public class IssueRequest
 {
     public int item_id { get; set; }
     public string issued_to { get; set; }
     public string department { get; set; }
     public int quantity { get; set; }
+    public string requested_by { get; set; }
 }

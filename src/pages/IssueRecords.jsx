@@ -5,19 +5,53 @@ function IssueRecord() {
   const [items, setItems] = useState([]);
   const [issueList, setIssueList] = useState([]);
   const [selectedItemId, setSelectedItemId] = useState('');
-  const [issuedTo, setIssuedTo] = useState('');
-  const [department, setDepartment] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [department, setDepartment] = useState('');
+  const [username, setUsername] = useState('');
+  const [userRole, setUserRole] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchItems();
-    fetchIssueList();
+    const fetchCurrentUser = async () => {
+      try {
+        const storedUserStr = localStorage.getItem('loggedInUser');
+        console.log("Raw localStorage:", storedUserStr);
+  
+        const storedUser = JSON.parse(storedUserStr);
+        const user = storedUser?.user;
+  
+        if (!user?.email) {
+          console.log("No email found in localStorage");
+          return;
+        }
+  
+        const res = await axios.get(`http://localhost:5007/api/user/me?email=${user.email}`);
+        console.log("User info from backend:", res.data);
+  
+        setUserRole(res.data.role?.toLowerCase());
+        setUserEmail(res.data.email);
+      } catch (err) {
+        console.error("Error fetching user:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchCurrentUser();
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    if (userRole && userEmail) {
+      fetchItems();
+      fetchIssueList();
+    }
+  }, [loading, userRole, userEmail]);
 
   const fetchItems = async () => {
     try {
       const res = await axios.get('http://localhost:5007/api/issue/items');
-      console.log("Fetched items response:", res.data);
       setItems(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Failed to fetch items:", err);
@@ -28,16 +62,22 @@ function IssueRecord() {
   const fetchIssueList = async () => {
     try {
       const res = await axios.get('http://localhost:5007/api/issue');
-      console.log("Fetched issueList response:", res.data);
-      setIssueList(Array.isArray(res.data) ? res.data : []);
+      const data = Array.isArray(res.data) ? res.data : [];
+
+      if (userRole === 'admin') {
+        setIssueList(data);
+      } else {
+        const userRequests = data.filter(record => record.requested_by === userEmail);
+        setIssueList(userRequests);
+      }
     } catch (err) {
       console.error("Failed to fetch issued list:", err);
       setIssueList([]);
     }
   };
 
-  const handleIssue = async () => {
-    if (!selectedItemId || isNaN(selectedItemId) || !issuedTo || !department || quantity <= 0) {
+  const handleRequestIssue = async () => {
+    if (!selectedItemId || quantity <= 0) {
       alert('All fields are required and valid');
       return;
     }
@@ -45,123 +85,198 @@ function IssueRecord() {
     try {
       await axios.post('http://localhost:5007/api/issue', {
         item_id: selectedItemId,
-        issued_to: issuedTo,
-        department,
+        issued_to: username ,
         quantity: parseInt(quantity),
+        department: department,
+        requested_by: userEmail,
+        status: 'requested',
       });
+
+      setSelectedItemId('');
+      setUsername('');
+      setQuantity('');
+      setDepartment('');
       fetchItems();
       fetchIssueList();
-      setSelectedItemId('');
-      setIssuedTo('');
-      setDepartment('');
-      setQuantity('');
     } catch (err) {
       const errorMessage = err.response?.data?.error || err.message;
-      alert('Error issuing item: ' + errorMessage);
+      alert('Error requesting item: ' + errorMessage);
     }
   };
 
-  const handleRevoke = async (issue_id) => {
+  const handleReturn = async (issue_id) => {
     try {
       await axios.delete(`http://localhost:5007/api/issue/${issue_id}`);
-      fetchItems();
       fetchIssueList();
     } catch (err) {
-      alert('Error revoking issue');
+      alert('Error returning item');
     }
   };
+
+  const handleApprove = async (issueId) => {
+    try {
+      const res = await axios.put(`http://localhost:5007/api/issue/approve/${issueId}`);
+      alert(res.data.message);
+      fetchIssueList();
+    } catch (err) {
+      alert(err.response?.data?.error || "Failed to approve request.");
+    }
+  };
+  
+  const handleReject = async (issueId) => {
+    try {
+      const res = await axios.put(`http://localhost:5007/api/issue/decline/${issueId}`);
+      alert(res.data.message);
+      fetchIssueList();
+    } catch (err) {
+      alert(err.response?.data?.error || "Failed to decline request.");
+    }
+  };
+  const handleDelete = async (issueId) => {
+    if (!window.confirm('Are you sure you want to delete this issue record?')) return;
+    try {
+      await axios.delete(`http://localhost:5007/api/issue/${issueId}`);
+      fetchIssueList();
+    } catch (err) {
+      alert('Error deleting issue record');
+    }
+  };
+  // Check if user is loading
+
+  if (loading) return <div className="p-6">Loading...</div>;
 
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Issue Record</h2>
+      <h2 className="text-2xl font-bold mb-4">Issue Management</h2>
 
-      <div className="grid md:grid-cols-5 gap-4 mb-6">
-        <select
-          value={selectedItemId}
-          onChange={(e) => setSelectedItemId(parseInt(e.target.value))}
-          className="border px-3 py-2 rounded"
-        >
-          <option value="">Select Item</option>
-          {Array.isArray(items) && items.map((item) => (
-            <option key={item.item_id} value={item.item_id}>
-              {item.item_name} (Stock: {item.stock})
-            </option>
-          ))}
-        </select>
+      {/* USER: Request Item Form */}
+      {userRole === 'user' && (
+        <div className="grid md:grid-row-3 gap-4 mb-6">
+          <select
+            value={selectedItemId}
+            onChange={(e) => setSelectedItemId(e.target.value)}
+            className="border px-3 py-2 rounded"
+          >
+            <option value="">Select Item</option>
+            {items.map((item) => (
+              <option key={item.item_id} value={item.item_id}>
+                {item.item_name} (Stock: {item.stock})
+              </option>
+            ))}
+          </select>
+          <input 
+            type="username" 
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Username"
+            className="border px-3 py-2 rounded"
+          />
 
-        <input
-          type="text"
-          value={issuedTo}
-          onChange={(e) => setIssuedTo(e.target.value)}
-          placeholder="Issued To"
-          className="border px-3 py-2 rounded"
-        />
+          <input
+            type="number"
+            min="1"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            placeholder="Quantity"
+            className="border px-3 py-2 rounded"
+          />
 
-        <input
-          type="text"
-          value={department}
-          onChange={(e) => setDepartment(e.target.value)}
-          placeholder="Department"
-          className="border px-3 py-2 rounded"
-        />
+          <input 
+            type="department" 
+            value={department}
+            onChange={(e) => setDepartment(e.target.value)}
+            placeholder="Department"
+            className="border px-3 py-2 rounded"
+          />
 
-        <input
-          type="number"
-          min="1"
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-          placeholder="Quantity"
-          className="border px-3 py-2 rounded"
-        />
+          <button
+            onClick={handleRequestIssue}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            Request Issue
+          </button>
+        </div>
+      )}
 
-        <button
-          onClick={handleIssue}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-        >
-          Issue
-        </button>
-      </div>
-
-      <h3 className="text-lg font-semibold mb-2">Issued Items</h3>
-      <table className="w-full text-left border">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="p-2">Item</th>
-            <th className="p-2">Issued To</th>
-            <th className="p-2">Department</th>
-            <th className="p-2">Quantity</th>
-            <th className="p-2">Date</th>
-            <th className="p-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Array.isArray(issueList) && issueList.length > 0 ? (
-            issueList.map((record) => (
-              <tr key={record.issue_id} className="border-t">
-                <td className="p-2">{record.item_name}</td>
-                <td className="p-2">{record.issued_to}</td>
-                <td className="p-2">{record.department}</td>
-                <td className="p-2">{record.quantity}</td>
-                <td className="p-2">{new Date(record.issue_date).toLocaleDateString()}</td>
-                <td className="p-2">
-                  <button
-                    onClick={() => handleRevoke(record.issue_id)}
-                    className="bg-red-500 text-white px-2 py-1 rounded"
-                  >
-                    Revoke
-                  </button>
-                </td>
+      {/* ADMIN and USER: View Issue Records */}
+      {(userRole === 'admin' || userRole === 'user') && (
+        // <p>This is a test</p>
+        <>
+          <h3 className="text-lg font-semibold mb-2">Issue Requests</h3>
+          <table className="w-full text-left border">
+            <thead>
+              <tr className="bg-gray-200 text-center">
+                <th className="p-2">Item</th>
+                <th className="p-2">Issued To</th>
+                <th className="p-2">Quantity</th>
+                <th className="p-2">Date</th>
+                <th className="p-2">Status</th>
+                <th className="p-2">Actions</th>
               </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="6" className="text-center p-4 text-gray-500">
-                No items issued yet.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {issueList.length > 0 ? (
+                issueList.map((record) => (
+                  <tr key={record.issue_id} className="border-t text-center">
+                    {console.log(record.issue_id, record.status)}
+                    <td className="p-2">{record.item_name}</td>
+                    <td className="p-2">{record.issued_to}</td>
+                    <td className="p-2">{record.quantity}</td>
+                    <td className="p-2">{new Date(record.issue_date).toLocaleDateString()}</td>
+                    <td className="p-2 capitalize">{record.status}</td>
+                    <td className="p-2 space-x-2">
+                      {/* ADMIN: Approve / Reject buttons */}
+                      {userRole === 'admin' && (record.status?.toLowerCase() === 'requested' || record.status?.toLowerCase() === 'pending') && (
+                        <>
+                          <button
+                            onClick={() => handleApprove(record.issue_id)}
+                            className="bg-green-600 text-white px-2 py-1 rounded"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleReject(record.issue_id)}
+                            className="bg-red-600 text-white px-2 py-1 rounded"
+                          >
+                            Reject
+                          </button>
+                          
+                        </>
+                      )}
+                      {userRole==='admin' && (record.status?.toLowerCase() === 'requested' || record.status?.toLowerCase() === 'pending' || record.status?.toLowerCase() === 'approved' || record.status?.toLowerCase() ==='declined') && (
+                        <>
+                          <button
+                            onClick={()=> handleDelete(record.issue_id)}
+                            className="bg-red-600 text-white px-2 py-1 rounded"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+
+                      {/* USER: Return button */}
+                      {userRole === 'user' && record.status === 'approved' && (
+                        <button
+                          onClick={() => handleReturn(record.issue_id)}
+                          className="bg-yellow-500 text-white px-2 py-1 rounded"
+                        >
+                          Return
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" className="text-center p-4 text-gray-500">
+                    No issue records found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </>
+      )}
     </div>
   );
 }
