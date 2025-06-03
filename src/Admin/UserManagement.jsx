@@ -15,7 +15,7 @@ function UserManagement() {
 
     const handleRoleChange = async (email, newRole) => {
         try {
-            await axios.put('http://localhost:5007/api/user/role', { email, newRole });
+            await axios.put('http://localhost:5007/api/user/update-role', { email, newRole });
             setUsers(prevUsers =>
                 prevUsers.map(user =>
                     user.email === email ? { ...user, role: newRole } : user
@@ -55,7 +55,7 @@ function UserManagement() {
                                     className="rounded px-2 py-1"
                                 >
                                     <option value="user">User</option>
-                                    <option value="staff">Staff</option>
+                                    {/* <option value="staff">Staff</option> */}
                                     <option value="admin">Admin</option>
                                 </select>
                             </td>

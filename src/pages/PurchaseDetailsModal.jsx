@@ -24,10 +24,10 @@ const PurchaseDetailsModal = ({ item, purchaseDetails, onClose }) => {
             {purchaseDetails.length > 0 ? (
               purchaseDetails.map((pd, index) => (
                 <tr key={index}>
-                  <td className="border p-2">{pd.order_id}</td>
+                  <td className="border p-2">{pd.orderId}</td>
                   <td className="border p-2">{pd.quantity}</td>
                   <td className="border p-2">{pd.price}</td>
-                  <td className="border p-2">{pd.purchase_date}</td>
+                  <td className="border p-2">{pd.purchaseDate}</td>
                 </tr>
               ))
             ) : (

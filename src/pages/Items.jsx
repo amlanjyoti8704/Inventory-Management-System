@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import PurchaseDetailsModal from './PurchaseDetailsModal';
+import { toast } from 'react-toastify';
 
 const Items = () => {
   const [items, setItems] = useState([]);
@@ -8,8 +9,17 @@ const Items = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [purchaseDetails, setPurchaseDetails] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [filterCategoryId, setFilterCategoryId] = useState('');
+  const [filterQuantity, setFilterQuantity] = useState('');
+  const [filterStorageLoc, setFilterStorageLoc] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-
+  const [showFilters, setShowFilters] = useState(false);
+  const [showPurchaseFormForItem, setShowPurchaseFormForItem] = useState(null);
+  const [purchaseFormData, setPurchaseFormData] = useState({
+    quantity: '',
+    price: '',
+    purchaseDate: ''
+  });
   const [newItem, setNewItem] = useState({
     name: '',
     category_id: '',
@@ -18,6 +28,7 @@ const Items = () => {
     quantity: '',
     storage_loc_l1: '',
     storage_loc_l2: '',
+    warrenty_expiration: '',
     purchase_quantity: '',
     price: '',
     purchase_date: '',
@@ -25,6 +36,21 @@ const Items = () => {
   });
 
   const [categories, setCategories] = useState([]);
+
+  const filteredItems = items.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+  
+    const matchesCategory = filterCategoryId ? item.category_id.toString() === filterCategoryId : true;
+  
+    const matchesQuantity = filterQuantity ? item.quantity === parseInt(filterQuantity, 10) : true;
+  
+    const matchesStorageLoc = filterStorageLoc
+      ? (item.storage_loc_l1.toLowerCase().includes(filterStorageLoc.toLowerCase()) ||
+         item.storage_loc_l2.toLowerCase().includes(filterStorageLoc.toLowerCase()))
+      : true;
+  
+    return matchesSearch && matchesCategory && matchesQuantity && matchesStorageLoc;
+  });
 
   // Fetch categories on mount
   useEffect(() => {
@@ -49,9 +75,9 @@ const Items = () => {
   };
 
   // Filtered items based on search term
-  const filteredItems = items.filter(item =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // const filteredItems = items.filter(item =>
+  //   item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  // );
 
   // Sorting function applied to filtered items
   const sortedItems = React.useMemo(() => {
@@ -88,6 +114,33 @@ const Items = () => {
     setSortConfig({ key, direction });
   };
 
+  const handlePurchaseFormChange = (e) => {
+    setPurchaseFormData({
+      ...purchaseFormData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+const handleNewPurchaseSubmit = async (itemId) => {
+  try {
+    const formattedDate = new Date(purchaseFormData.purchaseDate).toISOString().split('T')[0]; // "2025-06-03"
+
+    await axios.post(`http://localhost:5007/api/purchase-details/${itemId}`, {
+      quantity: Number(purchaseFormData.quantity),
+      price: Number(purchaseFormData.price),
+      purchaseDate: formattedDate
+    });
+
+    toast.success('Purchase added successfully!');
+    fetchItems(); // refresh list
+    setShowPurchaseFormForItem(null);
+    setPurchaseFormData({ quantity: '', price: '', purchaseDate: '' });
+  } catch (err) {
+    console.error(err);
+    toast.error('Failed to add purchase');
+  }
+};
+
   const handleViewMore = (item) => {
     setSelectedItem(item);
     axios.get(`http://localhost:5007/api/purchase-details/${item.item_id}`)
@@ -106,18 +159,19 @@ const Items = () => {
     e.preventDefault();
 
     const payload = {
-      name: newItem.name,
-      categoryId: newItem.category_id,
-      modelNo: newItem.model_no,
-      brand: newItem.brand,
-      quantity: newItem.quantity,
-      storageLocL1: newItem.storage_loc_l1,
-      storageLocL2: newItem.storage_loc_l2,
+      Name: newItem.name,
+      CategoryId: newItem.category_id,
+      ModelNo: newItem.model_no,
+      Brand: newItem.brand,
+      Quantity: newItem.quantity,
+      StorageLocL1: newItem.storage_loc_l1,
+      StorageLocL2: newItem.storage_loc_l2,
+      WarrentyExpiration: newItem.warrenty_expiration,
     };
 
     if (newItem.item_id) {
       // Update existing item
-      axios.put(`http://localhost:5007/api/items/${newItem.item_id}`, payload)
+      axios.put(`http://localhost:5007/api/items/update-item-with-purchase/${newItem.item_id}`, payload)
         .then(() => {
           fetchItems();
           resetForm();
@@ -128,9 +182,9 @@ const Items = () => {
       const fullPayload = {
         item: payload,
         purchase: {
-          quantity: newItem.purchase_quantity,
-          price: newItem.price,
-          purchaseDate: newItem.purchase_date,
+          Quantity: newItem.purchase_quantity,
+          Price: newItem.price,
+          PurchaseDate: newItem.purchase_date,
         }
       };
 
@@ -152,6 +206,7 @@ const Items = () => {
       quantity: '',
       storage_loc_l1: '',
       storage_loc_l2: '',
+      warrenty_expiration: '',
       purchase_quantity: '',
       price: '',
       purchase_date: '',
@@ -183,13 +238,60 @@ const Items = () => {
       <h2 className="text-2xl font-bold mb-4">Manage Items</h2>
 
       {/* Search */}
-      <input
-        type="text"
-        placeholder="Search items..."
-        className="border px-2 py-1 mb-4 w-full md:w-1/2"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
+      <div className='flex flex-col'>
+        <input
+          type="text"
+          placeholder="Search items..."
+          className="border px-2 py-1 mb-4 w-full md:w-1/2"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+
+        <button
+          className="mb-4 px-4 py-2 w-[10vw] bg-indigo-600 text-white rounded hover:bg-indigo-700"
+          onClick={() => setShowFilters(!showFilters)}
+        >
+          {showFilters ? 'Hide Filters' : 'Show Filters'}
+        </button>
+      </div>
+
+      {/* // In the JSX part, add filters UI above the table */}
+      {showFilters && (
+      <div className="mb-4 flex flex-wrap gap-4">
+        <select
+          className="border p-2"
+          value={filterCategoryId}
+          onChange={(e) => setFilterCategoryId(e.target.value)}
+        >
+          <option value="">All Categories</option>
+          {categories.map((cat) => (
+            <option
+             key={cat.categoryId} 
+             value={cat.categoryId}
+             className='text-gray-700'
+            >
+              {cat.categoryName}
+              </option>
+          ))}
+        </select>
+
+        <input
+          type="number"
+          placeholder="Min Quantity"
+          className="border p-2"
+          value={filterQuantity}
+          onChange={(e) => setFilterQuantity(e.target.value)}
+        />
+
+        <input
+          type="text"
+          placeholder="Storage Location"
+          className="border p-2"
+          value={filterStorageLoc}
+          onChange={(e) => setFilterStorageLoc(e.target.value)}
+        />
+      </div>
+      )}
 
       {/* Add New Item Form */}
       <form onSubmit={handleAddItem} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -204,7 +306,7 @@ const Items = () => {
           <option value="">Select Category</option>
           {categories.map((cat) => (
             <option key={cat.categoryId} value={cat.categoryId}>
-              {cat.name} (ID: {cat.categoryId})
+              {cat.categoryName} (ID: {cat.categoryId})
             </option>
           ))}
         </select>
@@ -213,6 +315,7 @@ const Items = () => {
         <input className="border p-2" type="number" name="quantity" value={newItem.quantity} onChange={handleInputChange} placeholder="Quantity" required />
         <input className="border p-2" name="storage_loc_l1" value={newItem.storage_loc_l1} onChange={handleInputChange} placeholder="Storage Loc L1" required />
         <input className="border p-2" name="storage_loc_l2" value={newItem.storage_loc_l2} onChange={handleInputChange} placeholder="Storage Loc L2" required />
+        {/* <input className="border p-2" type="date" name="warrenty_expiration" value={newItem.warrenty_expiration} onChange={handleInputChange} placeholder="Warranty Expiration" /> */}
         <input className="border p-2" type="number" name="purchase_quantity" value={newItem.purchase_quantity} onChange={handleInputChange} placeholder="Purchase Quantity" required />
         <input className="border p-2" type="number" name="price" value={newItem.price} onChange={handleInputChange} placeholder="Price" required />
         <input className="border p-2" type="date" name="purchase_date" value={newItem.purchase_date} onChange={handleInputChange} placeholder="Purchase Date" required />
@@ -233,42 +336,102 @@ const Items = () => {
             <th className="border p-2 cursor-pointer" onClick={() => requestSort('quantity')}>Quantity</th>
             <th className="border p-2 cursor-pointer" onClick={() => requestSort('storage_loc_l1')}>Storage L1</th>
             <th className="border p-2 cursor-pointer" onClick={() => requestSort('storage_loc_l2')}>Storage L2</th>
+            {/* <th className='border p-2 cursor-pointer' onClick={() => requestSort('warrenty_expiration')}>Warranty Expiration</th> */}
             <th className="border p-2">Actions</th>
           </tr>
         </thead>
         <tbody>
-          {sortedItems.map(item => (
-            <tr key={item.item_id} className="text-center">
-              <td className="border p-2">{item.name}</td>
-              <td className="border p-2">{item.category_id}</td>
-              <td className="border p-2">{item.model_no}</td>
-              <td className="border p-2">{item.brand}</td>
-              <td className="border p-2">{item.quantity}</td>
-              <td className="border p-2">{item.storage_loc_l1}</td>
-              <td className="border p-2">{item.storage_loc_l2}</td>
-              <td className="border p-2">
+  {sortedItems.map((item) => {
+    const category = categories.find(cat => cat.categoryId === item.category_id);
+    const threshold = category ? category.threshold : 0;
+    const isBelowThreshold = item.quantity < threshold;
+
+    return (
+      <React.Fragment key={item.item_id}>
+        <tr className={`text-center ${isBelowThreshold ? 'bg-red-200 text-red-800' : ''}`}>
+          <td className="border p-2">{String(item.name)}</td>
+          <td className="border p-2">{String(item.category_id)}</td>
+          <td className="border p-2">{String(item.model_no)}</td>
+          <td className="border p-2">{String(item.brand)}</td>
+          <td className="border p-2">{String(item.quantity)}</td>
+          <td className="border p-2">{String(item.storage_loc_l1)}</td>
+          <td className="border p-2">{String(item.storage_loc_l2)}</td>
+          <td className="border p-2">
+            <button
+              className="bg-green-600 text-white px-3 py-1 rounded mr-2"
+              onClick={() => setShowPurchaseFormForItem(item.item_id)}
+            >
+              New Purchase
+            </button>
+            <button
+              onClick={() => handleViewMore(item)}
+              className="bg-blue-500 text-white px-2 py-1 rounded mr-2"
+            >
+              View
+            </button>
+            {/* Uncomment if edit functionality is needed */}
+            {/* <button
+              onClick={() => handleEdit(item)}
+              className="bg-yellow-500 text-white px-2 py-1 rounded mr-2"
+            >
+              Edit
+            </button> */}
+            <button
+              onClick={() => handleDelete(item.item_id)}
+              className="bg-red-500 text-white px-2 py-1 rounded"
+            >
+              Delete
+            </button>
+          </td>
+        </tr>
+
+        {showPurchaseFormForItem === item.item_id && (
+          <tr>
+            <td colSpan="8" className="bg-gray-50 p-4">
+              <div className="flex flex-col md:flex-row gap-2">
+                <input
+                  type="number"
+                  name="quantity"
+                  value={purchaseFormData.quantity}
+                  onChange={handlePurchaseFormChange}
+                  placeholder="Quantity"
+                  className="border p-2"
+                />
+                <input
+                  type="number"
+                  name="price"
+                  value={purchaseFormData.price}
+                  onChange={handlePurchaseFormChange}
+                  placeholder="Price"
+                  className="border p-2"
+                />
+                <input
+                  type="date"
+                  name="purchaseDate"
+                  value={purchaseFormData.purchaseDate}
+                  onChange={handlePurchaseFormChange}
+                  className="border p-2"
+                />
                 <button
-                  onClick={() => handleViewMore(item)}
-                  className="bg-blue-500 text-white px-2 py-1 rounded mr-2"
+                  onClick={() => handleNewPurchaseSubmit(item.item_id)}
+                  className="bg-green-600 text-white px-4 py-2 rounded"
                 >
-                  View
+                  Submit Purchase
                 </button>
                 <button
-                  onClick={() => handleEdit(item)}
-                  className="bg-yellow-500 text-white px-2 py-1 rounded mr-2"
+                  onClick={() => setShowPurchaseFormForItem(null)}
+                  className="bg-red-500 text-white px-3 py-2 rounded"
                 >
-                  Edit
+                  Cancel
                 </button>
-                <button
-                  onClick={() => handleDelete(item.item_id)}
-                  className="bg-red-500 text-white px-2 py-1 rounded"
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
+              </div>
+            </td>
+          </tr>
+        )}
+      </React.Fragment>
+    );
+  })}
+</tbody>
       </table>
 
       {showModal && selectedItem && (

@@ -19,6 +19,7 @@ import Login from './pages/Login.jsx';
 import SignUp from './pages/SignUp.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import UserManagement from './Admin/UserManagement.jsx';
+import Alert_log from './pages/Alert_log.jsx';
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -55,6 +56,14 @@ const router = createBrowserRouter(
           element={
             <ProtectedRoute allowedRoles={['admin', 'user']}>
               <IssueRecord />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="alertlog"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Alert_log />
             </ProtectedRoute>
           }
         />

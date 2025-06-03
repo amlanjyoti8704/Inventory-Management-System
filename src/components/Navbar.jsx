@@ -84,11 +84,18 @@ function Navbar() {
                             {(role === 'admin' || role === 'user') && (
                                 <li>
                                     <NavLink to="/issuerecords" className={({ isActive }) => `${isActive ? "text-white border-b md:border-0 md:scale-120 md:hover:border-b-0 md:text-blue-200" : "lg:border-0 text-gray-100"} block py-2 pr-2 pl-1 duration-200 hover:bg-transparent md:hover:border-b lg:p-0`}>
-                                        Issue Records
+                                        Issue Record
                                     </NavLink>
                                 </li>
                             )}
 
+                            {role === 'admin' && (
+                                <li>
+                                    <NavLink to="/alertlog" className={({ isActive }) => `${isActive ? "text-white border-b md:border-0 md:scale-120 md:hover:border-b-0 md:text-blue-200" : "lg:border-0 text-gray-100"} block py-2 pr-2 pl-1 duration-200 hover:bg-transparent md:hover:border-b lg:p-0`}>
+                                        Alert Log
+                                    </NavLink>
+                                </li>
+                            )}
                             {role === 'admin' && (
                                 <li>
                                     <NavLink to="/usermanagement" className={({ isActive }) => `${isActive ? "text-white border-b md:border-0 md:scale-120 md:hover:border-b-0 md:text-blue-200" : "lg:border-0 text-gray-100"} block py-2 pr-2 pl-1 duration-200 hover:bg-transparent md:hover:border-b lg:p-0`}>

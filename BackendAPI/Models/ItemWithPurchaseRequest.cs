@@ -13,6 +13,7 @@ public class ItemDto
     public int Quantity { get; set; }
     public string StorageLocL1 { get; set; }
     public string StorageLocL2 { get; set; }
+    public DateTime WarrantyExpiration { get; set; }
 }
 
 public class PurchaseDto

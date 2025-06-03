@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 function IssueRecord() {
@@ -16,23 +17,27 @@ function IssueRecord() {
     const fetchCurrentUser = async () => {
       try {
         const storedUserStr = localStorage.getItem('loggedInUser');
-        console.log("Raw localStorage:", storedUserStr);
-  
-        const storedUser = JSON.parse(storedUserStr);
-        const user = storedUser?.user;
-  
-        if (!user?.email) {
-          console.log("No email found in localStorage");
+        if (!storedUserStr) {
+          console.error("No user found in localStorage");
+          setLoading(false);
           return;
         }
-  
+    
+        const storedUser = JSON.parse(storedUserStr);
+        const user = storedUser?.user;
+    
+        if (!user?.email) {
+          console.error("No email found in localStorage");
+          setLoading(false);
+          return;
+        }
+    
         const res = await axios.get(`http://localhost:5007/api/user/me?email=${user.email}`);
-        console.log("User info from backend:", res.data);
-  
         setUserRole(res.data.role?.toLowerCase());
         setUserEmail(res.data.email);
       } catch (err) {
         console.error("Error fetching user:", err);
+        alert("Failed to fetch user information. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -77,21 +82,21 @@ function IssueRecord() {
   };
 
   const handleRequestIssue = async () => {
-    if (!selectedItemId || quantity <= 0) {
+    if (!selectedItemId || quantity <= 0 || !username.trim() || !department.trim()) {
       alert('All fields are required and valid');
       return;
     }
-
+  
     try {
       await axios.post('http://localhost:5007/api/issue', {
         item_id: selectedItemId,
-        issued_to: username ,
+        issued_to: username.trim(),
         quantity: parseInt(quantity),
-        department: department,
+        department: department.trim(),
         requested_by: userEmail,
         status: 'requested',
       });
-
+  
       setSelectedItemId('');
       setUsername('');
       setQuantity('');
@@ -103,6 +108,7 @@ function IssueRecord() {
       alert('Error requesting item: ' + errorMessage);
     }
   };
+  
 
   const handleReturn = async (issue_id) => {
     try {
@@ -141,12 +147,21 @@ function IssueRecord() {
       alert('Error deleting issue record');
     }
   };
+
+  function safeRender(val) {
+    if (val === null || val === undefined) return 'N/A';
+    if (typeof val === 'object') return JSON.stringify(val, null, 2); // safely convert
+    return val.toString?.() || 'N/A';  // use .toString() if available
+  }
+  
+
   // Check if user is loading
 
   if (loading) return <div className="p-6">Loading...</div>;
 
   return (
     <div className="p-6">
+      
       <h2 className="text-2xl font-bold mb-4">Issue Management</h2>
 
       {/* USER: Request Item Form */}
@@ -208,22 +223,31 @@ function IssueRecord() {
               <tr className="bg-gray-200 text-center">
                 <th className="p-2">Item</th>
                 <th className="p-2">Issued To</th>
+                <th className="p-2">email</th>
+                <th className="p-2">Department</th>
                 <th className="p-2">Quantity</th>
                 <th className="p-2">Date</th>
                 <th className="p-2">Status</th>
                 <th className="p-2">Actions</th>
               </tr>
             </thead>
+            {/* {console.log('ISSUE RECORDS:', issueList)} */}
             <tbody>
               {issueList.length > 0 ? (
-                issueList.map((record) => (
+                issueList.map((record) => {
+                  console.log('RECORD:', JSON.stringify(record));
+                  console.log("item_name type:", typeof record.requested_by, record.requested_by);
+                  return(
                   <tr key={record.issue_id} className="border-t text-center">
                     {console.log(record.issue_id, record.status)}
-                    <td className="p-2">{record.item_name}</td>
-                    <td className="p-2">{record.issued_to}</td>
-                    <td className="p-2">{record.quantity}</td>
-                    <td className="p-2">{new Date(record.issue_date).toLocaleDateString()}</td>
-                    <td className="p-2 capitalize">{record.status}</td>
+                    <td className="p-2">{safeRender(record.item_name)}</td>
+                    <td className="p-2">{safeRender(record.issued_to)}</td>
+                    <td className="p-2">{safeRender(record.requested_by)}</td>
+                    <td className="p-2">{safeRender(record.department)}</td>
+                    <td className="p-2">{safeRender(record.quantity)}</td>
+                    <td className="p-2">{record.issue_date ? new Date(record.issue_date).toLocaleDateString() : 'N/A'}</td>
+                    <td className="p-2 capitalize">{safeRender(record.status)}</td>
+
                     <td className="p-2 space-x-2">
                       {/* ADMIN: Approve / Reject buttons */}
                       {userRole === 'admin' && (record.status?.toLowerCase() === 'requested' || record.status?.toLowerCase() === 'pending') && (
@@ -265,10 +289,11 @@ function IssueRecord() {
                       )}
                     </td>
                   </tr>
-                ))
+                  )
+      })
               ) : (
                 <tr>
-                  <td colSpan="6" className="text-center p-4 text-gray-500">
+                  <td colSpan="8" className="text-center p-4 text-gray-500">
                     No issue records found.
                   </td>
                 </tr>
