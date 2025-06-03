@@ -15,7 +15,8 @@ function UserManagement() {
 
     const handleRoleChange = async (email, newRole) => {
         try {
-            await axios.put('http://localhost:5007/api/user/update-role', { email, newRole });
+            await axios.put('http://localhost:5007/api/user/update-role', { Email: email, Role: newRole });
+            // console.log("Role updated:", res.data);
             setUsers(prevUsers =>
                 prevUsers.map(user =>
                     user.email === email ? { ...user, role: newRole } : user
