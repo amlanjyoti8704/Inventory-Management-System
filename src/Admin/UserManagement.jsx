@@ -32,38 +32,42 @@ function UserManagement() {
     }, []);
 
     return (
-        <div className="p-4 text-white">
-            <h2 className="text-2xl font-bold mb-4">User Management</h2>
-            <table className="w-full text-left table-auto border-collapse">
-                <thead>
-                    <tr className="bg-blue-800 text-white">
-                        <th className="px-4 py-2 border">Username</th>
-                        <th className="px-4 py-2 border">Email</th>
-                        <th className="px-4 py-2 border">Role</th>
-                        <th className="px-4 py-2 border">Change Role</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {users.map(user => (
-                        <tr key={user.email} className="bg-blue-200 text-black">
-                            <td className="px-4 py-2 border">{user.username}</td>
-                            <td className="px-4 py-2 border">{user.email}</td>
-                            <td className="px-4 py-2 border">{user.role}</td>
-                            <td className="px-4 py-2 border">
-                                <select
-                                    value={user.role}
-                                    onChange={(e) => handleRoleChange(user.email, e.target.value)}
-                                    className="rounded px-2 py-1"
-                                >
-                                    <option value="user">User</option>
-                                    {/* <option value="staff">Staff</option> */}
-                                    <option value="admin">Admin</option>
-                                </select>
-                            </td>
+        <div className="p-6 min-w-70 bg-gradient-to-b from-[rgb(0,6,22)] via-[rgb(8,46,66)] to-[rgb(7,7,33)] text-white w-full h-[80vh] flex flex-col justify-center items-center ">
+            <h2 className="text-3xl font-bold">User Management</h2>
+            <div className='p-15 mx-auto m-auto mt-[50px] mb-[90px] w-[90vw] border border-gray-600 rounded-3xl shadow-2xl bg-transparent bg-opacity-30 backdrop-blur-lg'>
+                <div className="absolute inset-0 bg-black opacity-20 -z-10 rounded-3xl"></div>
+
+                <table className="w-full text-left table-auto border-collapse opacity-90">
+                    <thead>
+                        <tr className="bg-blue-800 text-white">
+                            <th className="px-4 py-2 border">Username</th>
+                            <th className="px-4 py-2 border">Email</th>
+                            <th className="px-4 py-2 border">Role</th>
+                            <th className="px-4 py-2 border">Change Role</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {users.map(user => (
+                            <tr key={user.email} className="bg-blue-200 text-black">
+                                <td className="px-4 py-2 border">{user.username}</td>
+                                <td className="px-4 py-2 border">{user.email}</td>
+                                <td className="px-4 py-2 border">{user.role}</td>
+                                <td className="px-4 py-2 border">
+                                    <select
+                                        value={user.role}
+                                        onChange={(e) => handleRoleChange(user.email, e.target.value)}
+                                        className="rounded px-2 py-1"
+                                    >
+                                        <option value="user">User</option>
+                                        {/* <option value="staff">Staff</option> */}
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }

@@ -160,148 +160,152 @@ function IssueRecord() {
   if (loading) return <div className="p-6">Loading...</div>;
 
   return (
-    <div className="p-6">
-      
-      <h2 className="text-2xl font-bold mb-4">Issue Management</h2>
+    <div className="p-6 bg-gradient-to-b from-[rgb(0,6,22)] via-[rgb(8,46,66)] to-[rgb(7,7,33)] text-white h-[80vh] flex flex-col justify-center items-center">
+      <h2 className="text-3xl font-bold">Issue Management</h2>
+      <div className='mx-auto p-15 m-auto mt-[50px] mb-[90px] w-[90vw] border border-gray-600 rounded-3xl shadow-2xl bg-transparent bg-opacity-30 backdrop-blur-lg'>
+        <div className="absolute inset-0 bg-black opacity-20 -z-10 rounded-3xl"></div>
+          
 
-      {/* USER: Request Item Form */}
-      {userRole === 'user' && (
-        <div className="grid md:grid-row-3 gap-4 mb-6">
-          <select
-            value={selectedItemId}
-            onChange={(e) => setSelectedItemId(e.target.value)}
-            className="border px-3 py-2 rounded"
-          >
-            <option value="">Select Item</option>
-            {items.map((item) => (
-              <option key={item.item_id} value={item.item_id}>
-                {item.item_name} (Stock: {item.stock})
-              </option>
-            ))}
-          </select>
-          <input 
-            type="username" 
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Username"
-            className="border px-3 py-2 rounded"
-          />
+          {/* USER: Request Item Form */}
+          {userRole === 'user' && (
+            <div className="grid md:grid-row-3 gap-4 mb-6">
+              <select
+                value={selectedItemId}
+                onChange={(e) => setSelectedItemId(e.target.value)}
+                className="border px-3 py-2 rounded"
+              >
+                <option value="">Select Item</option>
+                {items.map((item) => (
+                  <option key={item.item_id} value={item.item_id}>
+                    {item.item_name} (Stock: {item.stock})
+                  </option>
+                ))}
+              </select>
+              <input 
+                type="username" 
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Username"
+                className="border px-3 py-2 rounded"
+              />
 
-          <input
-            type="number"
-            min="1"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            placeholder="Quantity"
-            className="border px-3 py-2 rounded"
-          />
+              <input
+                type="number"
+                min="1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                placeholder="Quantity"
+                className="border px-3 py-2 rounded"
+              />
 
-          <input 
-            type="department" 
-            value={department}
-            onChange={(e) => setDepartment(e.target.value)}
-            placeholder="Department"
-            className="border px-3 py-2 rounded"
-          />
+              <input 
+                type="department" 
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                placeholder="Department"
+                className="border px-3 py-2 rounded"
+              />
 
-          <button
-            onClick={handleRequestIssue}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-          >
-            Request Issue
-          </button>
-        </div>
-      )}
+              <button
+                onClick={handleRequestIssue}
+                className="bg-blue-600 text-white px-4 py-2 rounded"
+              >
+                Request Issue
+              </button>
+            </div>
+          )}
 
-      {/* ADMIN and USER: View Issue Records */}
-      {(userRole === 'admin' || userRole === 'user') && (
-        // <p>This is a test</p>
-        <>
-          <h3 className="text-lg font-semibold mb-2">Issue Requests</h3>
-          <table className="w-full text-left border">
-            <thead>
-              <tr className="bg-gray-200 text-center">
-                <th className="p-2">Item</th>
-                <th className="p-2">Issued To</th>
-                <th className="p-2">email</th>
-                <th className="p-2">Department</th>
-                <th className="p-2">Quantity</th>
-                <th className="p-2">Date</th>
-                <th className="p-2">Status</th>
-                <th className="p-2">Actions</th>
-              </tr>
-            </thead>
-            {/* {console.log('ISSUE RECORDS:', issueList)} */}
-            <tbody>
-              {issueList.length > 0 ? (
-                issueList.map((record) => {
-                  console.log('RECORD:', JSON.stringify(record));
-                  console.log("item_name type:", typeof record.requested_by, record.requested_by);
-                  return(
-                  <tr key={record.issue_id} className="border-t text-center">
-                    {console.log(record.issue_id, record.status)}
-                    <td className="p-2">{safeRender(record.item_name)}</td>
-                    <td className="p-2">{safeRender(record.issued_to)}</td>
-                    <td className="p-2">{safeRender(record.requested_by)}</td>
-                    <td className="p-2">{safeRender(record.department)}</td>
-                    <td className="p-2">{safeRender(record.quantity)}</td>
-                    <td className="p-2">{record.issue_date ? new Date(record.issue_date).toLocaleDateString() : 'N/A'}</td>
-                    <td className="p-2 capitalize">{safeRender(record.status)}</td>
-
-                    <td className="p-2 space-x-2">
-                      {/* ADMIN: Approve / Reject buttons */}
-                      {userRole === 'admin' && (record.status?.toLowerCase() === 'requested' || record.status?.toLowerCase() === 'pending') && (
-                        <>
-                          <button
-                            onClick={() => handleApprove(record.issue_id)}
-                            className="bg-green-600 text-white px-2 py-1 rounded"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleReject(record.issue_id)}
-                            className="bg-red-600 text-white px-2 py-1 rounded"
-                          >
-                            Reject
-                          </button>
-                          
-                        </>
-                      )}
-                      {userRole==='admin' && (record.status?.toLowerCase() === 'requested' || record.status?.toLowerCase() === 'pending' || record.status?.toLowerCase() === 'approved' || record.status?.toLowerCase() ==='declined') && (
-                        <>
-                          <button
-                            onClick={()=> handleDelete(record.issue_id)}
-                            className="bg-red-600 text-white px-2 py-1 rounded"
-                          >
-                            Delete
-                          </button>
-                        </>
-                      )}
-
-                      {/* USER: Return button */}
-                      {userRole === 'user' && record.status === 'approved' && (
-                        <button
-                          onClick={() => handleReturn(record.issue_id)}
-                          className="bg-yellow-500 text-white px-2 py-1 rounded"
-                        >
-                          Return
-                        </button>
-                      )}
-                    </td>
+          {/* ADMIN and USER: View Issue Records */}
+          {(userRole === 'admin' || userRole === 'user') && (
+            // <p>This is a test</p>
+            <>
+              <h3 className="text-lg font-semibold mb-2">Issue Requests</h3>
+              <table className="w-full text-left border opacity-70">
+                <thead>
+                  <tr className="bg-gray-700 text-center">
+                    <th className="p-2">Item</th>
+                    <th className="p-2">Issued To</th>
+                    <th className="p-2">email</th>
+                    <th className="p-2">Department</th>
+                    <th className="p-2">Quantity</th>
+                    <th className="p-2">Date</th>
+                    <th className="p-2">Status</th>
+                    <th className="p-2">Actions</th>
                   </tr>
-                  )
-      })
-              ) : (
-                <tr>
-                  <td colSpan="8" className="text-center p-4 text-gray-500">
-                    No issue records found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </>
-      )}
+                </thead>
+                {/* {console.log('ISSUE RECORDS:', issueList)} */}
+                <tbody>
+                  {issueList.length > 0 ? (
+                    issueList.map((record) => {
+                      console.log('RECORD:', JSON.stringify(record));
+                      console.log("item_name type:", typeof record.requested_by, record.requested_by);
+                      return(
+                      <tr key={record.issue_id} className="border-t text-center">
+                        {console.log(record.issue_id, record.status)}
+                        <td className="p-2">{safeRender(record.item_name)}</td>
+                        <td className="p-2">{safeRender(record.issued_to)}</td>
+                        <td className="p-2">{safeRender(record.requested_by)}</td>
+                        <td className="p-2">{safeRender(record.department)}</td>
+                        <td className="p-2">{safeRender(record.quantity)}</td>
+                        <td className="p-2">{record.issue_date ? new Date(record.issue_date).toLocaleDateString() : 'N/A'}</td>
+                        <td className="p-2 capitalize">{safeRender(record.status)}</td>
+
+                        <td className="p-2 space-x-2">
+                          {/* ADMIN: Approve / Reject buttons */}
+                          {userRole === 'admin' && (record.status?.toLowerCase() === 'requested' || record.status?.toLowerCase() === 'pending') && (
+                            <>
+                              <button
+                                onClick={() => handleApprove(record.issue_id)}
+                                className="bg-green-600 text-white px-2 py-1 rounded"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleReject(record.issue_id)}
+                                className="bg-red-600 text-white px-2 py-1 rounded"
+                              >
+                                Reject
+                              </button>
+                              
+                            </>
+                          )}
+                          {userRole==='admin' && (record.status?.toLowerCase() === 'requested' || record.status?.toLowerCase() === 'pending' || record.status?.toLowerCase() === 'approved' || record.status?.toLowerCase() ==='declined') && (
+                            <>
+                              <button
+                                onClick={()=> handleDelete(record.issue_id)}
+                                className="bg-red-600 text-white px-2 py-1 rounded"
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
+
+                          {/* USER: Return button */}
+                          {userRole === 'user' && record.status === 'approved' && (
+                            <button
+                              onClick={() => handleReturn(record.issue_id)}
+                              className="bg-yellow-500 text-white px-2 py-1 rounded"
+                            >
+                              Return
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                      )
+          })
+                  ) : (
+                    <tr>
+                      <td colSpan="8" className="text-center p-4 text-gray-500">
+                        No issue records found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </>
+          )}
+
+      </div>
     </div>
   );
 }

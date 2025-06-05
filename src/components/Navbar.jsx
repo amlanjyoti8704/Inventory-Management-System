@@ -35,12 +35,12 @@ function Navbar() {
     }, [isOpen]);
 
     return (
-        <header className='shadow sticky h-[85px] md:h-auto top-0 z-10 bg-gradient-to-t from-[rgb(0,6,22)] to-[rgb(17,50,100)] backdrop-blur-md border-b border-gray-600'>
+        <header className='shadow sticky h-[85px] xl:h-auto top-0 z-10 bg-gradient-to-t from-[rgb(0,6,22)] to-[rgb(17,50,100)] backdrop-blur-md border-b border-gray-600'>
             <nav className='lg-px-8 px-4 py-2 pl-0 w-full'>
                 <div className="text-white p-4 flex flex-wrap justify-between items-center relative">
                     <button
                         onClick={() => setIsOpen(!isOpen)}
-                        className="md:hidden text-white text-3xl focus:outline-none order-first flex items-center ml-4"
+                        className="xl:hidden text-white text-3xl focus:outline-none order-first flex items-center ml-4"
                         aria-expanded={isOpen}
                     >
                         {isOpen ? <FiX /> : <FiMenu />}
@@ -49,25 +49,26 @@ function Navbar() {
                     <div className='pl-5 text-3xl font-semibold bg-gradient-to-r from-gray-400 via-gray-300 to-white bg-clip-text text-transparent'>
                         IT Consumables
                     </div>
-
+                
                     <div
                         ref={menuRef}
-                        className={`md:flex flex-col md:flex-row md:space-x-10 md:items-center 
-                            absolute md:relative md:right-0 md:ml-auto top-[80px] md:top-0 right-0 left-0 w-[100vw] md:w-auto 
-                            h-[30vh] overflow-hidden md:overflow-visible md:h-auto bg-blue-300 md:bg-transparent z-0 md:p-0 
+                        className={`xl:flex flex-col xl:flex-row xl:space-x-10 xl:items-center 
+                            absolute xl:relative xl:right-0 xl:ml-auto top-[80px] xl:top-0 right-0 left-0 w-[100vw] xl:w-auto 
+                            h-[30vh] overflow-hidden xl:overflow-visible xl:h-auto bg-gradient-to-tl from-[rgb(0,6,22)] via-[rgb(8,46,66)] to-[rgb(7,7,33)] xl:bg-transparent z-0 xl:p-0 
                             transition-transform duration-300 ease-in-out 
-                            ${isOpen ? 'max-h-[300px] p-4' : 'max-h-0 p-0'}`}
+                            ${isOpen ? 'max-h-[380px] p-4' : 'max-h-0 p-0'}`}
                     >
-                        <ul className={`flex flex-col font-medium md:flex-row md:space-x-10 md:mt-0 md:items-center md:mr-5 transition-all duration-300 ease-in-out ${isOpen ? 'mt-4' : 'mt-0'}`}>
+                        {/* <div className='bg-gray-200 opacity-15 h-full w-full'></div> */}
+                        <ul className={`flex flex-col font-medium xl:flex-row xl:space-x-10 gap-4 sm:gap-4 lg:gap-8 xl:gap-0 xl:mt-0 xl:items-center xl:mr-5 transition-all duration-300 ease-in-out ${isOpen ? 'mt-4' : 'mt-0'}`}>
                             <li>
-                                <NavLink to="/" className={({ isActive }) => `${isActive ? "text-white border-b md:border-0 md:scale-120 md:hover:border-b-0 md:text-blue-200" : "lg:border-0 text-gray-100"} block py-2 pr-2 pl-1 duration-200 hover:bg-transparent md:hover:border-b lg:p-0`}>
+                                <NavLink to="/" className={({ isActive }) => `${isActive ? "text-white border-b xl:border-0 xl:scale-120 xl:hover:border-b-0 xl:text-blue-200" : "lg:border-0 text-gray-100"} block py-2 pr-2 pl-1 duration-200 hover:bg-transparent xl:hover:border-b lg:p-0`}>
                                     Home
                                 </NavLink>
                             </li>
 
                             {(role === 'admin' || role === 'staff') && (
                                 <li>
-                                    <NavLink to='/categories' className={({ isActive }) => `${isActive ? "text-white border-b md:border-0 md:scale-120 md:hover:border-b-0 md:text-blue-200" : "lg:border-0 text-gray-100"} block py-2 pr-2 pl-1 duration-200 hover:bg-transparent md:hover:border-b lg:p-0`}>
+                                    <NavLink to='/categories' className={({ isActive }) => `${isActive ? "text-white border-b xl:border-0 xl:scale-120 xl:hover:border-b-0 xl:text-blue-200" : "lg:border-0 text-gray-100"} block py-2 pr-2 pl-1 duration-200 hover:bg-transparent xl:hover:border-b lg:p-0`}>
                                         Categories
                                     </NavLink>
                                 </li>
@@ -75,7 +76,7 @@ function Navbar() {
 
                             {(role === 'admin' || role === 'staff') && (
                                 <li>
-                                    <NavLink to="/items" className={({ isActive }) => `${isActive ? "text-white border-b md:border-0 md:scale-120 md:hover:border-b-0 md:text-blue-200" : "lg:border-0 text-gray-100"} block py-2 pr-2 pl-1 duration-200 hover:bg-transparent md:hover:border-b lg:p-0`}>
+                                    <NavLink to="/items" className={({ isActive }) => `${isActive ? "text-white border-b xl:border-0 xl:scale-120 xl:hover:border-b-0 xl:text-blue-200" : "lg:border-0 text-gray-100"} block py-2 pr-2 pl-1 duration-200 hover:bg-transparent xl:hover:border-b lg:p-0`}>
                                         Items
                                     </NavLink>
                                 </li>
@@ -83,7 +84,7 @@ function Navbar() {
 
                             {(role === 'admin' || role === 'user') && (
                                 <li>
-                                    <NavLink to="/issuerecords" className={({ isActive }) => `${isActive ? "text-white border-b md:border-0 md:scale-120 md:hover:border-b-0 md:text-blue-200" : "lg:border-0 text-gray-100"} block py-2 pr-2 pl-1 duration-200 hover:bg-transparent md:hover:border-b lg:p-0`}>
+                                    <NavLink to="/issuerecords" className={({ isActive }) => `${isActive ? "text-white border-b xl:border-0 xl:scale-120 xl:hover:border-b-0 xl:text-blue-200" : "lg:border-0 text-gray-100"} block py-2 pr-2 pl-1 duration-200 hover:bg-transparent xl:hover:border-b lg:p-0`}>
                                         Issue Record
                                     </NavLink>
                                 </li>
@@ -91,14 +92,14 @@ function Navbar() {
 
                             {role === 'admin' && (
                                 <li>
-                                    <NavLink to="/alertlog" className={({ isActive }) => `${isActive ? "text-white border-b md:border-0 md:scale-120 md:hover:border-b-0 md:text-blue-200" : "lg:border-0 text-gray-100"} block py-2 pr-2 pl-1 duration-200 hover:bg-transparent md:hover:border-b lg:p-0`}>
+                                    <NavLink to="/alertlog" className={({ isActive }) => `${isActive ? "text-white border-b xl:border-0 xl:scale-120 xl:hover:border-b-0 xl:text-blue-200" : "lg:border-0 text-gray-100"} block py-2 pr-2 pl-1 duration-200 hover:bg-transparent xl:hover:border-b lg:p-0`}>
                                         Alert Log
                                     </NavLink>
                                 </li>
                             )}
                             {role === 'admin' && (
                                 <li>
-                                    <NavLink to="/usermanagement" className={({ isActive }) => `${isActive ? "text-white border-b md:border-0 md:scale-120 md:hover:border-b-0 md:text-blue-200" : "lg:border-0 text-gray-100"} block py-2 pr-2 pl-1 duration-200 hover:bg-transparent md:hover:border-b lg:p-0`}>
+                                    <NavLink to="/usermanagement" className={({ isActive }) => `${isActive ? "text-white border-b xl:border-0 xl:scale-120 xl:hover:border-b-0 xl:text-blue-200" : "lg:border-0 text-gray-100"} block py-2 pr-2 pl-1 duration-200 hover:bg-transparent xl:hover:border-b lg:p-0`}>
                                         Users
                                     </NavLink>
                                 </li>

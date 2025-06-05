@@ -5,10 +5,10 @@ const Footer = () => {
   return (
     
     <footer className="bg-[rgb(7,7,33)] border-y z-40 border-t border-gray-600">
-    <div className="mx-auto w-full max-w-screen-xl p-4 py-6 lg:py-8">
-        <div className="md:flex md:justify-between flex flex-col md:flex-row justify-center items-center">
+    <div className="mx-auto w-full p-4 py-6 lg:py-8">
+        <div className="md:flex md:justify-between w-full flex flex-col md:flex-row justify-center items-center">
             <div className="mb-6 md:mb-0">
-                <Link to="/" className="flex items-center">
+                <Link to="/" className="flex px-30 items-center">
                     <h1 className="bg-gradient-to-r from-gray-500 to-white bg-clip-text text-transparent text-5xl">IT Consuumables</h1>
                 </Link>
             </div>
@@ -21,29 +21,29 @@ const Footer = () => {
                                 Home
                             </NavLink>
                         </li>
-                        <li>
+                        {/* <li>
                             <NavLink to="/about" className={({ isActive }) => `${isActive ? "text-orange-700" : "text-gray-400"} hover:underline hover:text-orange-700`}>
                                 About
                             </NavLink>
-                        </li>
+                        </li> */}
                     </ul>
                 </div>
                 <div>
                     <h2 className="mb-6 text-sm font-semibold text-white uppercase">Follow us</h2>
                     <ul className="text-gray-400 font-medium">
                         <li className="mb-4">
-                            <NavLink to="https://github.com/sahasranshuu/Hackfest-Event-Sentiment-Analysis" target="_blank" className={({isActive})=> `${isActive ? "text-orange-700" : "text-gray-400"} hover:underline hover:text-orange-700` } >
+                            <NavLink to="https://github.com/amlanjyoti8704" target="_blank" className={({isActive})=> `${isActive ? "text-orange-700" : "text-gray-400"} hover:underline hover:text-orange-700` } >
                                 Github
                             </NavLink>
                         </li>
                         <li>
-                            <NavLink to="/discord" className={({isActive})=> `${isActive ? "text-orange-700" : "text-gray-400"} hover:underline hover:text-orange-700` } >
+                            {/* <NavLink to="/discord" className={({isActive})=> `${isActive ? "text-orange-700" : "text-gray-400"} hover:underline hover:text-orange-700` } >
                                 Discord
-                            </NavLink>
+                            </NavLink> */}
                         </li>
                     </ul>
                 </div>
-                <div>
+                {/* <div>
                     <h2 className="mb-6 text-sm font-semibold text-white uppercase">More</h2>
                     <ul className="text-gray-400 font-medium">
                         <li className="mb-4">
@@ -57,20 +57,20 @@ const Footer = () => {
                             </NavLink>
                         </li>
                     </ul>
-                </div>
+                </div> */}
             </div>
         </div>
         <hr className="my-6 border-gray-700 sm:mx-auto lg:my-8" />
         <div className="md:flex md:flex-row md:items-center md:justify-between p-3 flex flex-col justify-center items-center ">
-            <span className="text-sm text-gray-400 sm:text-center">
+            <span className="text-sm text-gray-400 sm:text-center px-28">
                 © 2025 
                 <a href="#" className="hover:underline">
                     AmlanJyoti
                 </a>
                 . All Rights Reserved.
             </span>
-            <div className="flex mt-4 space-x-5 sm:justify-center sm:mt-0">
-                <Link to="#" className="text-gray-400 hover:text-white">
+            <div className="flex mt-4 space-x-5 sm:justify-center sm:mt-0 px-38">
+                <Link to="https://www.facebook.com/profile.php?id=100089800446175" target="_blank" className="text-gray-400 hover:text-white">
                     <svg className="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 8 19">
                         <path
                             fillRule="evenodd"

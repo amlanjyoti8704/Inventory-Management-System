@@ -86,9 +86,11 @@ function CategoryPage() {
 
   return (
     <div className='bg-gradient-to-b from-[rgb(0,6,22)] via-[rgb(8,46,66)] to-[rgb(7,7,33)] w-full min-h-screen flex flex-col justify-center items-center'>
-      <div className="p-15 mx-auto m-auto mt-[90px] mb-[90px] w-[60vw] border border-gray-600 rounded-3xl shadow-2xl bg-transparent bg-opacity-30 backdrop-blur-lg">
-        <div className="absolute inset-0 bg-black opacity-20 -z-10"></div>
-        <h1 className="text-3xl text-white font-bold mb-4">Manage Categories</h1>
+      
+      <h1 className="text-3xl text-white mt-[70px] font-bold">Manage Categories</h1>
+      <div className="p-15 mx-auto m-auto mt-[50px] mb-[90px] w-[60vw] border border-gray-600 rounded-3xl shadow-2xl bg-transparent bg-opacity-30 backdrop-blur-lg">
+        <div className="absolute inset-0 bg-black opacity-20 -z-10 rounded-3xl"></div>
+        
 
         <form onSubmit={handleAddCategory} className="space-y-4 bg-transparent p-4 rounded-md shadow-md">
           <div>

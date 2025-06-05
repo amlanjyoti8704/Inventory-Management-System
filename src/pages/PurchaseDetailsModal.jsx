@@ -3,16 +3,17 @@ import React from 'react';
 const PurchaseDetailsModal = ({ item, purchaseDetails, onClose }) => {
   return (
     <div className="fixed inset-0 bg-transparent bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-gray-100 p-6 rounded-lg w-11/12 md:w-2/3 lg:w-1/2 shadow-lg relative">
+      <div className="bg-gradient-to-br from-[rgb(0,6,22)] via-[rgb(8,46,66)] to-[rgb(7,7,33)] p-6 rounded-lg w-11/12 md:w-2/3 lg:w-1/2 shadow-lg relative border border-white">
+      <div className="absolute inset-0 bg-white opacity-10 z-10 rounded-lg"></div>
         <button
-          className="absolute top-2 right-3 text-red-500 text-xl"
+          className="absolute top-2 right-3 text-red-500 text-xl z-20 hover:text-red-700 transition-colors duration-200"
           onClick={onClose}
         >
           &times;
         </button>
         <h3 className="text-xl font-bold mb-4">Purchase Details for {item.name}</h3>
         <table className="w-full border">
-          <thead className="bg-gray-100">
+          <thead className="bg-gray-700">
             <tr>
               <th className="border p-2">Order ID</th>
               <th className="border p-2">Quantity</th>
