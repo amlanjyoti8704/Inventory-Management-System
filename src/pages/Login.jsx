@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, NavLink } from 'react-router-dom';
 import bgImg from '../assets/Industry_in_deosar_tehsil.jpeg';
 
 function Login() {
@@ -87,8 +87,7 @@ function Login() {
                 />
                 Show Password
               </label>
-              <a href="#" className="text-blue-400 hover:underline">Forgot password?</a>
-            </div>
+              <Link to="/forgot-password" className="text-blue-400 hover:underline">Forgot password?</Link>            </div>
 
             <div className='flex items-center justify-between mb-4 text-sm'>
               <label className="flex items-center">

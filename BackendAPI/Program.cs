@@ -1,38 +1,3 @@
-// using System.Text.Json;
-// using MySqlConnector;
-// // using MySql.Data.MySqlClient;
-// using Microsoft.AspNetCore.Builder;
-// using Microsoft.AspNetCore.Http;
-// using Microsoft.Extensions.DependencyInjection;
-
-// var builder = WebApplication.CreateBuilder(args);
-
-// // Add CORS
-// builder.Services.AddCors(options =>
-// {
-//     options.AddPolicy("AllowAll",
-//         policy =>
-//         {
-//             policy.AllowAnyOrigin()
-//                   .AllowAnyMethod()
-//                   .AllowAnyHeader();
-//         });
-// });
-
-// builder.Services.AddControllers();
-
-// var app = builder.Build();
-
-// // Use CORS
-
-
-// app.UseAuthorization();
-// app.MapControllers();
-
-// // Login API endpoint
-// app.UseCors("AllowAll");
-// app.Run();
-
 
 using System.Text.Json;
 using MySqlConnector;
@@ -40,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Twilio; // ✅ Add this
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,5 +35,11 @@ app.UseCors("AllowAll");
 app.UseAuthorization();
 
 app.MapControllers();
+
+// ✅ Initialize Twilio after building the app
+var config = app.Services.GetRequiredService<IConfiguration>();
+string accountSid = config["Twilio:AccountSid"];
+string authToken = config["Twilio:AuthToken"];
+TwilioClient.Init(accountSid, authToken); // ✅ Twilio initialized
 
 app.Run();

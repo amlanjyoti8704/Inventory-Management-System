@@ -20,12 +20,16 @@ import SignUp from './pages/SignUp.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import UserManagement from './Admin/UserManagement.jsx';
 import Alert_log from './pages/Alert_log.jsx';
+import ForgotPassword from './pages/ForgotPassword.jsx';
+import ResetPassword from './pages/ResetPassword.jsx';
 
 const router = createBrowserRouter(
   createRoutesFromElements(
     <>
       <Route path="/signup" element={<SignUp />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/" element={<Layout />}>
         <Route
           index

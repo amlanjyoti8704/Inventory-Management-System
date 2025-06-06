@@ -12,6 +12,8 @@ function IssueRecord() {
   const [userRole, setUserRole] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [loading, setLoading] = useState(true);
+  const [sortField, setSortField] = useState('');
+  const [sortOrder, setSortOrder] = useState('asc'); // 'asc' or 'desc'
 
   useEffect(() => {
     const fetchCurrentUser = async () => {
@@ -79,6 +81,23 @@ function IssueRecord() {
       console.error("Failed to fetch issued list:", err);
       setIssueList([]);
     }
+  };
+
+  const sortIssueList = (field) => {
+    let order = 'asc';
+    if (sortField === field && sortOrder === 'asc') {
+      order = 'desc';
+    }
+    setSortField(field);
+    setSortOrder(order);
+  
+    const sorted = [...issueList].sort((a, b) => {
+      if (a[field] < b[field]) return order === 'asc' ? -1 : 1;
+      if (a[field] > b[field]) return order === 'asc' ? 1 : -1;
+      return 0;
+    });
+  
+    setIssueList(sorted);
   };
 
   const handleRequestIssue = async () => {
@@ -223,12 +242,12 @@ function IssueRecord() {
               <table className="w-full text-left border opacity-70">
                 <thead>
                   <tr className="bg-gray-700 text-center">
-                    <th className="p-2">Item</th>
-                    <th className="p-2">Issued To</th>
-                    <th className="p-2">email</th>
-                    <th className="p-2">Department</th>
-                    <th className="p-2">Quantity</th>
-                    <th className="p-2">Date</th>
+                    <th className='p-2 cursor-pointer' onClick={() => sortIssueList('item_name')}>Item Name</th>
+                    <th className="p-2 cursor-pointer" onClick={() => sortIssueList('issued_to')}>Issued To</th>
+                    <th className="p-2 cursor-pointer" onClick={() => sortIssueList('email')}>email</th>
+                    <th className="p-2 cursor-pointer" onClick={() => sortIssueList('department')}>Department</th>
+                    <th className="p-2 cursor-pointer" onClick={() => sortIssueList('quantity')}>Quantity</th>
+                    <th className="p-2 cursor-pointer" onClick={() => sortIssueList('date')}>Date</th>
                     <th className="p-2">Status</th>
                     <th className="p-2">Actions</th>
                   </tr>
