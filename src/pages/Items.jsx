@@ -246,7 +246,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
             <input
               type="text"
               placeholder="Search items..."
-              className="border px-2 py-1 mb-4 w-full md:w-1/2"
+              className="border px-2 py-1 mb-4 w-full md:w-1/2 rounded-lg"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -299,9 +299,9 @@ const handleNewPurchaseSubmit = async (itemId) => {
 
           {/* Add New Item Form */}
           <form onSubmit={handleAddItem} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <input className="border p-2" name="name" value={newItem.name} onChange={handleInputChange} placeholder="Item Name" required />
+            <input className="border p-2 rounded-lg" name="name" value={newItem.name} onChange={handleInputChange} placeholder="Item Name" required />
             <select
-              className="border p-2"
+              className="border p-2 rounded-lg"
               name="category_id"
               value={newItem.category_id}
               onChange={handleInputChange}
@@ -314,15 +314,15 @@ const handleNewPurchaseSubmit = async (itemId) => {
                 </option>
               ))}
             </select>
-            <input className="border p-2" name="model_no" value={newItem.model_no} onChange={handleInputChange} placeholder="Model No" required />
-            <input className="border p-2" name="brand" value={newItem.brand} onChange={handleInputChange} placeholder="Brand" required />
-            <input className="border p-2" type="number" name="quantity" value={newItem.quantity} onChange={handleInputChange} placeholder="Quantity" required />
-            <input className="border p-2" name="storage_loc_l1" value={newItem.storage_loc_l1} onChange={handleInputChange} placeholder="Storage Loc L1" required />
-            <input className="border p-2" name="storage_loc_l2" value={newItem.storage_loc_l2} onChange={handleInputChange} placeholder="Storage Loc L2" required />
-            {/* <input className="border p-2" type="date" name="warrenty_expiration" value={newItem.warrenty_expiration} onChange={handleInputChange} placeholder="Warranty Expiration" /> */}
-            <input className="border p-2" type="number" name="purchase_quantity" value={newItem.purchase_quantity} onChange={handleInputChange} placeholder="Purchase Quantity" required />
-            <input className="border p-2" type="number" name="price" value={newItem.price} onChange={handleInputChange} placeholder="Price" required />
-            <input className="border p-2" type="date" name="purchase_date" value={newItem.purchase_date} onChange={handleInputChange} placeholder="Purchase Date" required />
+            <input className="border p-2 rounded-lg" name="model_no" value={newItem.model_no} onChange={handleInputChange} placeholder="Model No" required />
+            <input className="border p-2 rounded-lg" name="brand" value={newItem.brand} onChange={handleInputChange} placeholder="Brand" required />
+            <input className="border p-2 rounded-lg" type="number" name="quantity" value={newItem.quantity} onChange={handleInputChange} placeholder="Quantity" required />
+            <input className="border p-2 rounded-lg" name="storage_loc_l1" value={newItem.storage_loc_l1} onChange={handleInputChange} placeholder="Storage Loc L1" required />
+            <input className="border p-2 rounded-lg" name="storage_loc_l2" value={newItem.storage_loc_l2} onChange={handleInputChange} placeholder="Storage Loc L2" required />
+            {/* <input className="border p-2 rounded-lg" type="date" name="warrenty_expiration" value={newItem.warrenty_expiration} onChange={handleInputChange} placeholder="Warranty Expiration" /> */}
+            <input className="border p-2 rounded-lg" type="number" name="purchase_quantity" value={newItem.purchase_quantity} onChange={handleInputChange} placeholder="Purchase Quantity" required />
+            <input className="border p-2 rounded-lg" type="number" name="price" value={newItem.price} onChange={handleInputChange} placeholder="Price" required />
+            <input className="border p-2 rounded-lg" type="date" name="purchase_date" value={newItem.purchase_date} onChange={handleInputChange} placeholder="Purchase Date" required />
             <button type="submit" className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 col-span-1 md:col-span-3">
               {newItem.item_id ? 'Update Item' : 'Add Item'}
             </button>
@@ -330,18 +330,18 @@ const handleNewPurchaseSubmit = async (itemId) => {
 
           {/* Items Table */}
           <p className='text-center text-gray-200 pb-5 underline'>Click on the column heading to sort acording to that column</p>
-          <table className="w-full border border-collapse opacity-70">
+          <table className="w-full border-none border-collapse opacity-70">
             <thead className="bg-gray-700">
               <tr>
-                <th className="border p-2 cursor-pointer" onClick={() => requestSort('name')}>Item Name</th>
-                <th className="border p-2 cursor-pointer" onClick={() => requestSort('category_id')}>Category ID</th>
-                <th className="border p-2 cursor-pointer" onClick={() => requestSort('model_no')}>Model No</th>
-                <th className="border p-2 cursor-pointer" onClick={() => requestSort('brand')}>Brand</th>
-                <th className="border p-2 cursor-pointer" onClick={() => requestSort('quantity')}>Quantity</th>
-                <th className="border p-2 cursor-pointer" onClick={() => requestSort('storage_loc_l1')}>Storage L1</th>
-                <th className="border p-2 cursor-pointer" onClick={() => requestSort('storage_loc_l2')}>Storage L2</th>
+                <th className="border-b p-2 cursor-pointer rounded-tl-lg" onClick={() => requestSort('name')}>Item Name</th>
+                <th className="border-b p-2 cursor-pointer" onClick={() => requestSort('category_id')}>Category ID</th>
+                <th className="border-b p-2 cursor-pointer" onClick={() => requestSort('model_no')}>Model No</th>
+                <th className="border-b p-2 cursor-pointer" onClick={() => requestSort('brand')}>Brand</th>
+                <th className="border-b p-2 cursor-pointer" onClick={() => requestSort('quantity')}>Quantity</th>
+                <th className="border-b p-2 cursor-pointer" onClick={() => requestSort('storage_loc_l1')}>Storage L1</th>
+                <th className="border-b p-2 cursor-pointer" onClick={() => requestSort('storage_loc_l2')}>Storage L2</th>
                 {/* <th className='border p-2 cursor-pointer' onClick={() => requestSort('warrenty_expiration')}>Warranty Expiration</th> */}
-                <th className="border p-2">Actions</th>
+                <th className="border-b p-2 rounded-tr-lg">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -352,15 +352,15 @@ const handleNewPurchaseSubmit = async (itemId) => {
 
           return (
           <React.Fragment key={item.item_id}>
-            <tr className={`text-center ${isBelowThreshold ? 'bg-red-200 text-red-800' : ''}`}>
-              <td className="border p-2">{String(item.name)}</td>
-              <td className="border p-2">{String(item.category_id)}</td>
-              <td className="border p-2">{String(item.model_no)}</td>
-              <td className="border p-2">{String(item.brand)}</td>
-              <td className="border p-2">{String(item.quantity)}</td>
-              <td className="border p-2">{String(item.storage_loc_l1)}</td>
-              <td className="border p-2">{String(item.storage_loc_l2)}</td>
-              <td className="border p-2">
+            <tr className={`text-center ${isBelowThreshold ? 'bg-red-200 text-red-800 hover:text-red-300' : ''} hover:bg-gray-800 transition-colors`}>
+              <td className="border-b p-2">{String(item.name)}</td>
+              <td className="border-b p-2">{String(item.category_id)}</td>
+              <td className="border-b p-2">{String(item.model_no)}</td>
+              <td className="border-b p-2">{String(item.brand)}</td>
+              <td className="border-b p-2">{String(item.quantity)}</td>
+              <td className="border-b p-2">{String(item.storage_loc_l1)}</td>
+              <td className="border-b p-2">{String(item.storage_loc_l2)}</td>
+              <td className="border-b p-2">
                 <button
                   className="bg-green-600 text-white px-3 py-1 rounded mr-2"
                   onClick={() => setShowPurchaseFormForItem(item.item_id)}

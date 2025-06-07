@@ -139,13 +139,13 @@ function CategoryPage() {
           </div>
         </div>
 
-        <table className="min-w-full text-slate-200 bg-transparent opacity-90 border">
+        <table className="min-w-full text-slate-200 bg-transparent opacity-90 border-none">
           <thead className="bg-gray-700 text-slate-200 opacity-100 z-10">
-            <tr>
-              <th className="py-2 px-4 border border-gray-300">ID</th>
-              <th className="py-2 px-4 border border-gray-300">Name</th>
-              <th className="py-2 px-4 border border-gray-300">Threshold</th>
-              <th className="py-2 px-4 border border-gray-300">Actions</th>
+            <tr className='border-none'>
+              <th className="py-2 px-4 border-b border-gray-300 rounded-tl-lg">ID</th>
+              <th className="py-2 px-4 border-b border-gray-300">Name</th>
+              <th className="py-2 px-4 border-b border-gray-300">Threshold</th>
+              <th className="py-2 px-4 border-b border-gray-300 rounded-tr-lg">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -158,11 +158,11 @@ function CategoryPage() {
                 return 0;
               })
               .map(cat => (
-                <tr key={cat.category_id}>
-                  <td className="py-2 px-4 border border-gray-300">{cat.categoryId}</td>
-                  <td className="py-2 px-4 border border-gray-300">{cat.categoryName}</td>
-                  <td className="py-2 px-4 border border-gray-300">{cat.threshold}</td>
-                  <td className="py-2 px-4 border border-gray-300">
+                <tr key={cat.category_id} className='hover:bg-gray-800 transition-colors text-center'>
+                  <td className="py-2 px-4 border-b border-gray-300">{cat.categoryId}</td>
+                  <td className="py-2 px-4 border-b border-gray-300">{cat.categoryName}</td>
+                  <td className="py-2 px-4 border-b border-gray-300">{cat.threshold}</td>
+                  <td className="py-2 px-4 border-b border-gray-300">
                     <button
                       onClick={() => handleEdit(cat)}
                       className="text-blue-600 hover:underline mr-3"

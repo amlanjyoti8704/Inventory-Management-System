@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 function IssueRecord() {
@@ -14,6 +14,9 @@ function IssueRecord() {
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState('');
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc' or 'desc'
+  const [pendingIssues, setPendingIssues] = useState(0);
+  const [pendingReturns, setPendingReturns] = useState(0);
+  const [showOnlyPending, setShowOnlyPending] = useState(false);
 
   useEffect(() => {
     const fetchCurrentUser = async () => {
@@ -47,6 +50,39 @@ function IssueRecord() {
   
     fetchCurrentUser();
   }, []);
+
+  const filteredIssues = showOnlyPending
+  ? issueList.filter(issue =>
+      issue.status?.toLowerCase() === 'requested' ||
+      issue.status?.toLowerCase() === 'pending' ||
+      (issue.return_status && issue.return_status?.toLowerCase() === 'requested')
+    )
+  : issueList;
+
+  useEffect(() => {
+    const fetchPendingCounts = async () => {
+      try {
+        const res = await axios.get('http://localhost:5007/api/issue/pending-requests');
+        const data = res.data || [];
+        console.log('API Data:', data);
+        const issueCount = data.filter(r => r.status === 'requested' || r.status === 'pending').length;
+        const returnCount = data.filter(r =>
+            r.returnStatus && r.returnStatus.trim().toLowerCase() === 'requested'
+          ).length;
+  
+        setPendingIssues(issueCount);
+        setPendingReturns(returnCount);
+      } catch (error) {
+        console.error('Error fetching pending counts:', error);
+      }
+    };
+  
+    if (userRole === 'admin' || userRole === 'staff') {
+      fetchPendingCounts();
+      const interval = setInterval(fetchPendingCounts, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [userRole]);
 
   useEffect(() => {
     if (loading) return;
@@ -131,10 +167,11 @@ function IssueRecord() {
 
   const handleReturn = async (issue_id) => {
     try {
-      await axios.delete(`http://localhost:5007/api/issue/${issue_id}`);
+      await axios.put(`http://localhost:5007/api/issue/request-return/${issue_id}`);
+      alert("Return request sent.");
       fetchIssueList();
     } catch (err) {
-      alert('Error returning item');
+      alert('Error sending return request');
     }
   };
 
@@ -167,6 +204,28 @@ function IssueRecord() {
     }
   };
 
+  const handleAcceptReturn = async (issueId) => {
+    try {
+      await axios.put(`http://localhost:5007/api/issue/approve-return/${issueId}`);
+      alert("Return approved.");
+      fetchIssueList();
+    } catch (err) {
+      alert("Failed to approve return.");
+    }
+  };
+  
+  const handleRejectReturn = async (issue_id) => {
+    try {
+      console.log("Rejecting return for issue_id:", issue_id); // helpful debug
+      await axios.put(`http://localhost:5007/api/issue/reject-return/${issue_id}`);
+      alert("Return rejected.");
+      fetchIssueList();
+    } catch (err) {
+      console.error("Reject return error:", err.response?.data || err.message);
+      alert("Failed to reject return: " + (err.response?.data?.error || err.message));
+    }
+  };
+
   function safeRender(val) {
     if (val === null || val === undefined) return 'N/A';
     if (typeof val === 'object') return JSON.stringify(val, null, 2); // safely convert
@@ -179,7 +238,7 @@ function IssueRecord() {
   if (loading) return <div className="p-6">Loading...</div>;
 
   return (
-    <div className="p-6 bg-gradient-to-b from-[rgb(0,6,22)] via-[rgb(8,46,66)] to-[rgb(7,7,33)] text-white h-[80vh] flex flex-col justify-center items-center">
+    <div className="p-6 bg-gradient-to-b from-[rgb(0,6,22)] via-[rgb(8,46,66)] to-[rgb(7,7,33)] text-white min-h-screen overflow-scroll flex flex-col justify-center items-center">
       <h2 className="text-3xl font-bold">Issue Management</h2>
       <div className='mx-auto p-15 m-auto mt-[50px] mb-[90px] w-[90vw] border border-gray-600 rounded-3xl shadow-2xl bg-transparent bg-opacity-30 backdrop-blur-lg'>
         <div className="absolute inset-0 bg-black opacity-20 -z-10 rounded-3xl"></div>
@@ -238,28 +297,64 @@ function IssueRecord() {
           {(userRole === 'admin' || userRole === 'user') && (
             // <p>This is a test</p>
             <>
-              <h3 className="text-lg font-semibold mb-2">Issue Requests</h3>
-              <table className="w-full text-left border opacity-70">
+              <div className='flex justify-between items-center mb-4'>
+                <h3 className="text-lg font-semibold mb-2">Issue Requests</h3>
+                <div className='flex justify-end gap-2.5 mb-2'>
+                    <div
+                        className="cursor-pointer bg-gray-600 hover:bg-gray-700 transition-colors p-2 rounded"
+                        onClick={() => {
+                        setShowDropdown(false);
+                         
+                        }}
+                    >
+                      Pending Issue Requests: <span className="font-bold">{pendingIssues}</span>
+                    </div>
+                    <div
+                      className="cursor-pointer bg-gray-600 hover:bg-gray-700 transition-colors p-2 rounded"
+                      onClick={() => {
+                      setShowDropdown(false);
+                      
+                      }}
+                    >
+                      Pending Return Requests: <span className="font-bold">{pendingReturns}</span>
+                    </div>   
+                    <div className="p-2 flex justify-center items-center">
+                      <input
+                        type="checkbox"
+                        id="pendingFilter"
+                        checked={showOnlyPending}
+                        onChange={() => setShowOnlyPending(!showOnlyPending)}
+                        className='cursor-pointer size-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 '
+                      />
+                      <label className='ml-2' htmlFor="pendingFilter">Show only pending requests</label>
+                    </div>             
+                </div>
+              </div>
+
+              <table className="w-full text-left opacity-70">
                 <thead>
-                  <tr className="bg-gray-700 text-center">
-                    <th className='p-2 cursor-pointer' onClick={() => sortIssueList('item_name')}>Item Name</th>
+                  <tr className="bg-gray-700 text-center border-b">
+                    <th className='p-2 cursor-pointer rounded-tl-lg' onClick={() => sortIssueList('item_name')}>Item Name</th>
                     <th className="p-2 cursor-pointer" onClick={() => sortIssueList('issued_to')}>Issued To</th>
-                    <th className="p-2 cursor-pointer" onClick={() => sortIssueList('email')}>email</th>
+                    <th className="p-2 cursor-pointer" onClick={() => sortIssueList('email')}>Email</th>
                     <th className="p-2 cursor-pointer" onClick={() => sortIssueList('department')}>Department</th>
                     <th className="p-2 cursor-pointer" onClick={() => sortIssueList('quantity')}>Quantity</th>
                     <th className="p-2 cursor-pointer" onClick={() => sortIssueList('date')}>Date</th>
-                    <th className="p-2">Status</th>
-                    <th className="p-2">Actions</th>
+                    <th className="p-2">Issue-Status</th>
+                    <th className='p-2'>Return-Status</th>
+                    <th className="p-2 rounded-tr-lg">Actions</th>
                   </tr>
                 </thead>
                 {/* {console.log('ISSUE RECORDS:', issueList)} */}
                 <tbody>
                   {issueList.length > 0 ? (
-                    issueList.map((record) => {
+                    filteredIssues.map((record) => {
                       console.log('RECORD:', JSON.stringify(record));
                       console.log("item_name type:", typeof record.requested_by, record.requested_by);
+                      console.log('return_status:', record.return_status);
+                      
                       return(
-                      <tr key={record.issue_id} className="border-t text-center">
+                      <tr key={record.issue_id} className="border-b text-center hover:bg-gray-800 transition-colors">
                         {console.log(record.issue_id, record.status)}
                         <td className="p-2">{safeRender(record.item_name)}</td>
                         <td className="p-2">{safeRender(record.issued_to)}</td>
@@ -268,6 +363,7 @@ function IssueRecord() {
                         <td className="p-2">{safeRender(record.quantity)}</td>
                         <td className="p-2">{record.issue_date ? new Date(record.issue_date).toLocaleDateString() : 'N/A'}</td>
                         <td className="p-2 capitalize">{safeRender(record.status)}</td>
+                        <td className="p-2 capitalize">{safeRender(record.return_status) || 'none'}</td>
 
                         <td className="p-2 space-x-2">
                           {/* ADMIN: Approve / Reject buttons */}
@@ -288,7 +384,8 @@ function IssueRecord() {
                               
                             </>
                           )}
-                          {userRole==='admin' && (record.status?.toLowerCase() === 'requested' || record.status?.toLowerCase() === 'pending' || record.status?.toLowerCase() === 'approved' || record.status?.toLowerCase() ==='declined') && (
+                          {userRole==='admin' && ((record.status?.toLowerCase() === 'approved' || record.status?.toLowerCase() ==='declined' || record.return_status?.toLowerCase()==='approved') && record.return_status?.toLowerCase() !=='requested') && (
+                            //record.status?.toLowerCase() === 'requested' || record.status?.toLowerCase() === 'pending' || 
                             <>
                               <button
                                 onClick={()=> handleDelete(record.issue_id)}
@@ -307,6 +404,24 @@ function IssueRecord() {
                             >
                               Return
                             </button>
+                          )}
+
+                          {/* ADMIN: Accept/Reject Return */}
+                          {userRole === 'admin' && record.return_status === 'requested' && (
+                            <>
+                              <button 
+                                onClick={() => handleAcceptReturn(record.issue_id)}
+                                className="bg-green-600 text-white px-2 py-1 rounded"
+                              >
+                                Accept Return
+                              </button>
+                              <button 
+                                onClick={() => handleRejectReturn(record.issue_id)}
+                                className="bg-red-600 text-white px-2 py-1 rounded"
+                              >
+                                Reject Return
+                              </button>
+                            </>
                           )}
                         </td>
                       </tr>

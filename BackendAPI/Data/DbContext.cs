@@ -1,6 +1,6 @@
 // using MySql.Data.MySqlClient;
 using MySqlConnector;
-
+using BackendAPI.Models; // Or wherever your IssueRecord.cs is located
 public class DbContext
 {
     private string connectionString = "server=localhost;user=root;password=7295883411;database=IT_consumables";

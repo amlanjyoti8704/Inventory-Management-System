@@ -20,6 +20,8 @@ function Home() {
     // totalSuppliers: 0,
     totalPurchaseOrders: 0,
     totalIssues: 0,
+    pendingIssues: 0,
+    returnRequests: 0,
   });
 
   const chartData = [
@@ -28,6 +30,8 @@ function Home() {
     { name: 'Low Stock', value: summary.lowStockItems },
     { name: 'Purchases', value: summary.totalPurchaseOrders },
     { name: 'Issued', value: summary.totalIssues },
+    { name: 'Pending Issues', value: summary.pendingIssues },
+    { name: 'Return Requests', value: summary.returnRequests },
   ];
   
   useEffect(() => {
@@ -90,13 +94,15 @@ function Home() {
       <div id='dashboard' className='relative px-6 py-8 bg-transparent shadow-lg max-w-7xl mx-auto min-h-screen flex flex-col justify-center items-center'>
         <h2 className="text-2xl text-white font-bold mb-6">Inventory Dashboard</h2>
 
-        <div className="flex flex-col items-center justify-center lg:flex-row lg:items-center lg:justify-center gap-6 mb-8 w-[70vw]">
+        <div className="flex flex-col items-center justify-center lg:flex-row lg:items-center lg:justify-center gap-6 mb-8 w-[80vw]">
           <DashboardCard title="Total Categories" value={summary.totalCategories} />
           <DashboardCard title="Total Items" value={summary.totalItems} />
           <DashboardCard title="Low Stock Items" value={summary.lowStockItems} highlight />
           {/* <DashboardCard title="Suppliers" value={summary.totalSuppliers} /> */}
           <DashboardCard title="Purchase Orders" value={summary.totalPurchaseOrders} />
           <DashboardCard title="Issued Records" value={summary.totalIssues} />
+          <DashboardCard title="Pending Issues" value={summary.pendingIssues} highlight />
+          <DashboardCard title="Return Requests" value={summary.returnRequests} highlight />
         </div>
 
         <div className="bg-transparent border border-white text-black shadow p-4 rounded-xl w-[70vw]">

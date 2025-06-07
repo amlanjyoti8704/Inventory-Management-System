@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using MySql.Data.MySqlClient;
+// using MySql.Data.MySqlClient;
+using MySqlConnector;
 using System.Data;
 using System.Collections.Generic;
 
@@ -75,7 +76,7 @@ public class IssueController : ControllerBase
 
         string query = @"
             SELECT ir.issue_id, ci.name AS item_name, ir.issued_to, ir.department, ir.quantity,
-                   ir.issue_date, ir.status, ir.requested_by
+                   ir.issue_date, ir.status, ir.requested_by, ir.return_status
             FROM issue_records ir
             JOIN consumableItems ci ON ir.item_id = ci.item_id";
 
@@ -98,7 +99,8 @@ public class IssueController : ControllerBase
                 quantity = reader["quantity"],
                 issue_date = reader["issue_date"],
                 status = reader["status"],
-                requested_by = reader["requested_by"]
+                requested_by = reader["requested_by"],
+                return_status = reader["return_status"]
             });
         }
         return Ok(issues);
@@ -199,6 +201,125 @@ public class IssueController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
+    [HttpPut("request-return/{id}")]
+    public IActionResult RequestReturn(int id)
+    {
+        using var conn = GetConnection();
+        conn.Open();
+        try
+        {
+            var updateCmd = new MySqlCommand("UPDATE issue_records SET return_status = 'requested' WHERE issue_id = @id AND status = 'approved'", conn);
+            updateCmd.Parameters.AddWithValue("@id", id);
+            int affected = updateCmd.ExecuteNonQuery();
+
+            if (affected == 0)
+                return BadRequest(new { error = "Return request failed. Either invalid ID or not in approved state." });
+
+            return Ok(new { message = "Return request sent to admin." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpPut("approve-return/{id}")]
+    public IActionResult ApproveReturn(int id)
+    {
+        using var conn = GetConnection();
+        conn.Open();
+        using var transaction = conn.BeginTransaction();
+        try
+        {
+            // Get issue details
+            var selectCmd = new MySqlCommand("SELECT item_id, quantity FROM issue_records WHERE issue_id = @id AND return_status = 'requested'", conn);
+            selectCmd.Parameters.AddWithValue("@id", id);
+            using var reader = selectCmd.ExecuteReader();
+            if (!reader.Read())
+                return NotFound(new { error = "No matching return request found." });
+
+            int itemId = Convert.ToInt32(reader["item_id"]);
+            int quantity = Convert.ToInt32(reader["quantity"]);
+            reader.Close();
+
+            // Increase stock
+            var updateStock = new MySqlCommand("UPDATE consumableItems SET quantity = quantity + @qty WHERE item_id = @item_id", conn, transaction);
+            updateStock.Parameters.AddWithValue("@qty", quantity);
+            updateStock.Parameters.AddWithValue("@item_id", itemId);
+            updateStock.ExecuteNonQuery();
+
+            // Update return status
+            var updateReturn = new MySqlCommand("UPDATE issue_records SET return_status = 'approved', status = 'returned' WHERE issue_id = @id", conn, transaction);
+            updateReturn.Parameters.AddWithValue("@id", id);
+            updateReturn.ExecuteNonQuery();
+
+            transaction.Commit();
+            return Ok(new { message = "Return approved and stock updated." });
+        }
+        catch (Exception ex)
+        {
+            transaction.Rollback();
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpPut("reject-return/{id}")]
+    public IActionResult RejectReturn(int id)
+    {
+        using var conn = GetConnection();
+        conn.Open();
+        try
+        {
+            var updateCmd = new MySqlCommand("UPDATE issue_records SET return_status = 'rejected' WHERE issue_id = @id AND return_status = 'requested'", conn);
+            updateCmd.Parameters.AddWithValue("@id", id);
+            int affected = updateCmd.ExecuteNonQuery();
+
+            if (affected == 0)
+                return BadRequest(new { error = "Reject failed. Invalid request or not in 'requested' state." });
+
+            return Ok(new { message = "Return request rejected." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("pending-requests")]
+    public IActionResult GetPendingRequests()
+    {
+        List<IssueRecords> pendingIssues = new List<IssueRecords>();
+
+        var db = new DbContext();
+        using var conn = db.GetConnection();
+        conn.Open();
+
+        string query = @"SELECT * FROM issue_records 
+                WHERE status IN ('pending', 'requested') 
+                OR LOWER(TRIM(return_status)) = 'requested'";
+
+        using var cmd = new MySqlCommand(query, conn);
+        using var reader = cmd.ExecuteReader();
+
+        while (reader.Read())
+        {
+            pendingIssues.Add(new IssueRecords
+            {
+                IssueId = Convert.ToInt32(reader["issue_id"]),
+                IssuedTo = reader["issued_to"].ToString(),
+                Department = reader["department"].ToString(),
+                Quantity = Convert.ToInt32(reader["quantity"]),
+                requested_by = reader["requested_by"].ToString(),
+                Status = reader["status"].ToString(),
+                ReturnStatus = reader["return_status"] == DBNull.Value ? null : reader["return_status"].ToString(),                IssueDate = Convert.ToDateTime(reader["issue_date"])
+            });
+        }
+
+        return Ok(pendingIssues);
+    }
+
+
 }
 
 // ✅ Model

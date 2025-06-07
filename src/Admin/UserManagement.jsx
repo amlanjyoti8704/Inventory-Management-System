@@ -37,22 +37,22 @@ function UserManagement() {
             <div className='p-15 mx-auto m-auto mt-[50px] mb-[90px] w-[90vw] border border-gray-600 rounded-3xl shadow-2xl bg-transparent bg-opacity-30 backdrop-blur-lg'>
                 <div className="absolute inset-0 bg-black opacity-20 -z-10 rounded-3xl"></div>
 
-                <table className="w-full text-left table-auto border-collapse opacity-90">
+                <table className="w-full text-center table-auto border-collapse opacity-80">
                     <thead>
-                        <tr className="bg-blue-800 text-white">
-                            <th className="px-4 py-2 border">Username</th>
-                            <th className="px-4 py-2 border">Email</th>
-                            <th className="px-4 py-2 border">Role</th>
-                            <th className="px-4 py-2 border">Change Role</th>
+                        <tr className="bg-gray-700 text-white">
+                            <th className="px-4 py-2 border-b rounded-tl-lg">Username</th>
+                            <th className="px-4 py-2 border-b">Email</th>
+                            <th className="px-4 py-2 border-b">Role</th>
+                            <th className="px-4 py-2 border-b rounded-tr-lg">Change Role</th>
                         </tr>
                     </thead>
                     <tbody>
                         {users.map(user => (
-                            <tr key={user.email} className="bg-blue-200 text-black">
-                                <td className="px-4 py-2 border">{user.username}</td>
-                                <td className="px-4 py-2 border">{user.email}</td>
-                                <td className="px-4 py-2 border">{user.role}</td>
-                                <td className="px-4 py-2 border">
+                            <tr key={user.email} className="bg-transparent text-white">
+                                <td className="px-4 py-2 border-b">{user.username}</td>
+                                <td className="px-4 py-2 border-b">{user.email}</td>
+                                <td className="px-4 py-2 border-b">{user.role}</td>
+                                <td className="px-4 py-2 border-b">
                                     <select
                                         value={user.role}
                                         onChange={(e) => handleRoleChange(user.email, e.target.value)}

@@ -32,7 +32,9 @@ namespace BackendAPI.Controllers
                                                                     WHERE ci.quantity < c.threshold"),
                 // totalSuppliers = await ExecuteCountQuery(connection, "SELECT COUNT(*) FROM suppliers"),
                 totalPurchaseOrders = await ExecuteCountQuery(connection, "SELECT COUNT(*) FROM purchase_details"),
-                totalIssues = await ExecuteCountQuery(connection, "SELECT COUNT(*) FROM issue_records")
+                totalIssues = await ExecuteCountQuery(connection, "SELECT COUNT(*) FROM issue_records"),
+                pendingIssues = await ExecuteCountQuery(connection, "SELECT COUNT(*) FROM issue_records where status='pending' or status='requested'"),
+                returnRequests = await ExecuteCountQuery(connection, "SELECT COUNT(*) FROM issue_records WHERE return_status = 'requested'"),
             };
 
             return Ok(summary);
