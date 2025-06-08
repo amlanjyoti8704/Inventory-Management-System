@@ -138,34 +138,49 @@ public class IssueController : ControllerBase
     {
         using var conn = GetConnection();
         conn.Open();
-        using var transaction = conn.BeginTransaction();
+
+        using var transaction = conn.BeginTransaction(); // Start transaction
         try
         {
-            var getCmd = new MySqlCommand("SELECT quantity, item_id FROM issue_records WHERE issue_id = @id AND status = 'pending'", conn);
+            // Step 1: Get item_id and quantity for the given issue
+            var getCmd = new MySqlCommand("SELECT item_id, quantity FROM issue_records WHERE issue_id = @id AND status = 'pending'", conn, transaction);
             getCmd.Parameters.AddWithValue("@id", id);
-            using var reader = getCmd.ExecuteReader();
-            if (!reader.Read()) return NotFound(new { error = "Pending request not found." });
 
-            int qty = Convert.ToInt32(reader["quantity"]);
-            int itemId = Convert.ToInt32(reader["item_id"]);
-            reader.Close();
+            int itemId = 0;
+            int issueQty = 0;
+            using (var reader = getCmd.ExecuteReader())
+            {
+                if (!reader.Read())
+                    return NotFound(new { error = "Request not found or already processed." });
 
-            var stockCmd = new MySqlCommand("SELECT quantity FROM consumableItems WHERE item_id = @item_id", conn);
-            stockCmd.Parameters.AddWithValue("@item_id", itemId);
-            int stock = Convert.ToInt32(stockCmd.ExecuteScalar());
-            if (stock < qty) return BadRequest(new { error = "Insufficient stock." });
+                itemId = Convert.ToInt32(reader["item_id"]);
+                issueQty = Convert.ToInt32(reader["quantity"]);
+            }
 
-            var updateStock = new MySqlCommand("UPDATE consumableItems SET quantity = quantity - @qty WHERE item_id = @item_id", conn);
-            updateStock.Parameters.AddWithValue("@qty", qty);
-            updateStock.Parameters.AddWithValue("@item_id", itemId);
-            updateStock.ExecuteNonQuery();
+            // Step 2: Check stock
+            var checkStockCmd = new MySqlCommand("SELECT quantity FROM consumableItems WHERE item_id = @item_id", conn, transaction);
+            checkStockCmd.Parameters.AddWithValue("@item_id", itemId);
+            var currentStock = Convert.ToInt32(checkStockCmd.ExecuteScalar());
 
-            var updateStatus = new MySqlCommand("UPDATE issue_records SET status = 'approved', issue_date = NOW() WHERE issue_id = @id", conn);
-            updateStatus.Parameters.AddWithValue("@id", id);
-            updateStatus.ExecuteNonQuery();
+            if (currentStock < issueQty)
+            {
+                transaction.Rollback();
+                return BadRequest(new { error = "Not enough stock." });
+            }
+
+            // Step 3: Deduct stock
+            var updateStockCmd = new MySqlCommand("UPDATE consumableItems SET quantity = quantity - @qty WHERE item_id = @item_id", conn, transaction);
+            updateStockCmd.Parameters.AddWithValue("@qty", issueQty);
+            updateStockCmd.Parameters.AddWithValue("@item_id", itemId);
+            updateStockCmd.ExecuteNonQuery();
+
+            // Step 4: Update issue status
+            var updateStatusCmd = new MySqlCommand("UPDATE issue_records SET status = 'approved' WHERE issue_id = @id", conn, transaction);
+            updateStatusCmd.Parameters.AddWithValue("@id", id);
+            updateStatusCmd.ExecuteNonQuery();
 
             transaction.Commit();
-            return Ok(new { message = "Request approved and issued." });
+            return Ok(new { message = "Request approved and stock updated." });
         }
         catch (Exception ex)
         {
@@ -173,6 +188,7 @@ public class IssueController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
 
     [HttpDelete("{id}")]
     public IActionResult DeleteIssueRecord(int id)
@@ -229,30 +245,43 @@ public class IssueController : ControllerBase
     {
         using var conn = GetConnection();
         conn.Open();
-        using var transaction = conn.BeginTransaction();
+        using var transaction = conn.BeginTransaction(); // Start the transaction
+
         try
         {
-            // Get issue details
-            var selectCmd = new MySqlCommand("SELECT item_id, quantity FROM issue_records WHERE issue_id = @id AND return_status = 'requested'", conn);
+            // Step 1: Get item_id and quantity from issue_records
+            var selectCmd = new MySqlCommand(@"
+            SELECT item_id, quantity 
+            FROM issue_records 
+            WHERE issue_id = @id AND status = 'approved' AND return_status = 'requested';", conn, transaction);
             selectCmd.Parameters.AddWithValue("@id", id);
-            using var reader = selectCmd.ExecuteReader();
-            if (!reader.Read())
-                return NotFound(new { error = "No matching return request found." });
 
-            int itemId = Convert.ToInt32(reader["item_id"]);
-            int quantity = Convert.ToInt32(reader["quantity"]);
-            reader.Close();
+            int itemId, quantity;
+            using (var reader = selectCmd.ExecuteReader())
+            {
+                if (!reader.Read())
+                    return NotFound(new { error = "Record not found or already returned." });
 
-            // Increase stock
-            var updateStock = new MySqlCommand("UPDATE consumableItems SET quantity = quantity + @qty WHERE item_id = @item_id", conn, transaction);
-            updateStock.Parameters.AddWithValue("@qty", quantity);
-            updateStock.Parameters.AddWithValue("@item_id", itemId);
-            updateStock.ExecuteNonQuery();
+                itemId = Convert.ToInt32(reader["item_id"]);
+                quantity = Convert.ToInt32(reader["quantity"]);
+            }
 
-            // Update return status
-            var updateReturn = new MySqlCommand("UPDATE issue_records SET return_status = 'approved', status = 'returned' WHERE issue_id = @id", conn, transaction);
-            updateReturn.Parameters.AddWithValue("@id", id);
-            updateReturn.ExecuteNonQuery();
+            // Step 2: Update return_status in issue_records
+            var updateReturnCmd = new MySqlCommand(@"
+            UPDATE issue_records 
+            SET return_status = 'approved' 
+            WHERE issue_id = @id;", conn, transaction);
+            updateReturnCmd.Parameters.AddWithValue("@id", id);
+            updateReturnCmd.ExecuteNonQuery();
+
+            // Step 3: Update stock in consumableItems
+            var updateStockCmd = new MySqlCommand(@"
+            UPDATE consumableItems 
+            SET quantity = quantity + @qty 
+            WHERE item_id = @item_id;", conn, transaction);
+            updateStockCmd.Parameters.AddWithValue("@qty", quantity);
+            updateStockCmd.Parameters.AddWithValue("@item_id", itemId);
+            updateStockCmd.ExecuteNonQuery();
 
             transaction.Commit();
             return Ok(new { message = "Return approved and stock updated." });
@@ -263,6 +292,7 @@ public class IssueController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
 
     [HttpPut("reject-return/{id}")]
     public IActionResult RejectReturn(int id)
