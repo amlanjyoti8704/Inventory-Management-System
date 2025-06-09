@@ -1,14 +1,18 @@
-// using MySql.Data.MySqlClient;
+using Microsoft.Extensions.Configuration;
 using MySqlConnector;
 using BackendAPI.Models; // Or wherever your IssueRecord.cs is located
 public class DbContext
 {
-    private string connectionString = "server=localhost;user=root;password=7295883411;database=IT_consumables";
-    // private string connectionString = "server=localhost;user=amlan;password=test1234;database=IT_consumables;";
+    private readonly string _connectionString;
+
+    public DbContext(IConfiguration configuration)
+    {
+        _connectionString = configuration.GetConnectionString("DefaultConnection");
+    }
 
     public MySqlConnection GetConnection()
     {
-        return new MySqlConnection(connectionString);
+        return new MySqlConnection(_connectionString);
     }
     public void ExecuteQuery(string query, Dictionary<string, object> parameters)
     {

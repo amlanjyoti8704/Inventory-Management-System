@@ -14,12 +14,13 @@ using MimeKit;
 [ApiController]
 public class UserController : ControllerBase
 {
-    private readonly DbContext _context = new DbContext();
+    private readonly DbContext _context;
     private readonly IConfiguration _configuration;
 
     public UserController(IConfiguration configuration)
     {
         _configuration = configuration;
+        _context = new DbContext(_configuration);
     }
 
     [HttpPost("signup")]
@@ -31,7 +32,7 @@ public class UserController : ControllerBase
         conn.Open();
 
         var cmd = new MySqlCommand(
-            "INSERT INTO users (email, username, password, role, createdAt) VALUES (@email, @username, @password, @role, @createdAt)",
+            "INSERT INTO Users (email, username, password, role, createdAt) VALUES (@email, @username, @password, @role, @createdAt)",
             conn);
 
         cmd.Parameters.AddWithValue("@email", user.Email);
@@ -43,7 +44,7 @@ public class UserController : ControllerBase
         cmd.ExecuteNonQuery();
 
         // Fetch the inserted user (including ID)
-        var getUserCmd = new MySqlCommand("SELECT id, username, email, role FROM users WHERE email = @Email", conn);
+        var getUserCmd = new MySqlCommand("SELECT id, username, email, role FROM Users WHERE email = @Email", conn);
         getUserCmd.Parameters.AddWithValue("@Email", user.Email);
 
         using var reader = getUserCmd.ExecuteReader();
@@ -71,7 +72,7 @@ public class UserController : ControllerBase
         using var conn = _context.GetConnection();
         conn.Open();
 
-        var cmd = new MySqlCommand("SELECT * FROM users WHERE email = @Email", conn);
+        var cmd = new MySqlCommand("SELECT * FROM Users WHERE email = @Email", conn);
         cmd.Parameters.AddWithValue("@Email", login.Email);
 
         using var reader = cmd.ExecuteReader();
@@ -106,7 +107,7 @@ public class UserController : ControllerBase
         using var conn = _context.GetConnection();
         conn.Open();
 
-        var cmd = new MySqlCommand("SELECT id, username, email, role FROM users", conn);
+        var cmd = new MySqlCommand("SELECT id, username, email, role FROM Users", conn);
         using var reader = cmd.ExecuteReader();
 
         while (reader.Read())
@@ -129,7 +130,7 @@ public class UserController : ControllerBase
         using var connection = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection"));
         await connection.OpenAsync();
 
-        var query = "UPDATE users SET role = @Role WHERE email = @Email";
+        var query = "UPDATE Users SET role = @Role WHERE email = @Email";
         using var command = new MySqlCommand(query, connection);
         command.Parameters.AddWithValue("@Role", request.Role);
         command.Parameters.AddWithValue("@Email", request.Email);
@@ -147,7 +148,7 @@ public class UserController : ControllerBase
         using var conn = _context.GetConnection();
         conn.Open();
 
-        var cmd = new MySqlCommand("SELECT id, username, email, role FROM users WHERE email = @Email", conn);
+        var cmd = new MySqlCommand("SELECT id, username, email, role FROM Users WHERE email = @Email", conn);
         cmd.Parameters.AddWithValue("@Email", email);
 
         using var reader = cmd.ExecuteReader();
@@ -226,7 +227,7 @@ public class UserController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Email))
             return BadRequest(new { message = "Email is required" });
 
-        var db = new DbContext();
+        var db = new DbContext(_configuration);
         using var conn = db.GetConnection();
         conn.Open();
 
@@ -284,7 +285,7 @@ public class UserController : ControllerBase
     [HttpPost("reset-password")]
     public IActionResult ResetPassword([FromBody] ResetPasswordRequest req)
     {
-        var db = new DbContext();
+        var db = new DbContext(_configuration);
         using var conn = db.GetConnection();
         conn.Open();
 
@@ -319,7 +320,7 @@ public class UserController : ControllerBase
     [HttpPost("request-password-reset")]
     public IActionResult RequestPasswordReset([FromBody] PhoneRequest request)
     {
-        var db = new DbContext();
+        var db = new DbContext(_configuration);
         using var conn = db.GetConnection();
         conn.Open();
 
@@ -374,7 +375,7 @@ public class UserController : ControllerBase
     [HttpPost("verify-token-reset")]
     public IActionResult VerifyTokenReset([FromBody] VerifyTokenRequest req)
     {
-        var db = new DbContext();
+        var db = new DbContext(_configuration);
         using var conn = db.GetConnection();
         conn.Open();
 
