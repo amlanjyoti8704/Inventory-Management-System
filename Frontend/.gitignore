@@ -69,3 +69,4 @@ backend/*.Secrets.json
 # ===========================
 .env
 .env.*
+**/.env
