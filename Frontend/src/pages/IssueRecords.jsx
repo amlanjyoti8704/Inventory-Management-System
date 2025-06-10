@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -51,13 +51,14 @@ function IssueRecord() {
     fetchCurrentUser();
   }, []);
 
-  const filteredIssues = showOnlyPending
-  ? issueList.filter(issue =>
+  const filteredIssues = useMemo(() => {
+    if (!showOnlyPending) return issueList;
+    return issueList.filter(issue =>
       issue.status?.toLowerCase() === 'requested' ||
       issue.status?.toLowerCase() === 'pending' ||
-      (issue.return_status && issue.return_status?.toLowerCase() === 'requested')
-    )
-  : issueList;
+      (issue.return_status?.toLowerCase() === 'requested')
+    );
+  }, [showOnlyPending, issueList]);
 
   useEffect(() => {
     const fetchPendingCounts = async () => {
@@ -409,6 +410,7 @@ function IssueRecord() {
                           {/* ADMIN: Accept/Reject Return */}
                           {userRole === 'admin' && record.return_status === 'requested' && (
                             <>
+                            <div className='flex justify-center items-center gap-2'>
                               <button 
                                 onClick={() => handleAcceptReturn(record.issue_id)}
                                 className="bg-green-600 text-white px-2 py-1 rounded"
@@ -421,6 +423,7 @@ function IssueRecord() {
                               >
                                 Reject Return
                               </button>
+                            </div> 
                             </>
                           )}
                         </td>

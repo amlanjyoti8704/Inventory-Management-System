@@ -55,12 +55,13 @@ const Items = () => {
   // Fetch categories on mount
   useEffect(() => {
     fetchCategories();
+    fetchItems();
   }, []);
 
   // Fetch items on mount and when needed
-  useEffect(() => {
-    fetchItems();
-  }, []);
+  // useEffect(() => {
+  //   fetchItems();
+  // }, []);
 
   const fetchCategories = () => {
     axios.get('http://localhost:5007/api/categories')

@@ -9,9 +9,6 @@ import {
 } from 'recharts';
 
 function Home() {
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
 
   const [summary, setSummary] = useState({
     totalCategories: 0,
@@ -97,26 +94,31 @@ function Home() {
         <div className="flex flex-col items-center justify-center lg:flex-row lg:items-center lg:justify-center gap-6 mb-8 w-[80vw]">
           <DashboardCard title="Total Categories" value={summary.totalCategories} />
           <DashboardCard title="Total Items" value={summary.totalItems} />
-          <DashboardCard title="Low Stock Items" value={summary.lowStockItems} highlight />
+          <DashboardCard title="Low Stock Items" value={summary.lowStockItems} highlight/>
           {/* <DashboardCard title="Suppliers" value={summary.totalSuppliers} /> */}
           <DashboardCard title="Purchase Orders" value={summary.totalPurchaseOrders} />
           <DashboardCard title="Issued Records" value={summary.totalIssues} />
-          <DashboardCard title="Pending Issues" value={summary.pendingIssues} highlight />
-          <DashboardCard title="Return Requests" value={summary.returnRequests} highlight />
+          <DashboardCard title="Pending Issues" value={summary.pendingIssues} />
+          <DashboardCard title="Return Requests" value={summary.returnRequests}  />
         </div>
 
         <div className="bg-transparent border border-white text-black shadow p-4 rounded-xl w-[70vw]">
           <h3 className="text-xl text-white font-semibold mb-2">Inventory Trends</h3>
-          <ResponsiveContainer width="100%" height={300}>
+          {summary.totalItems === 0 ? (
+            <div className="text-center text-gray-400">Loading summary...</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+            
+              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip/>
+                <Bar dataKey="value" fill="#818386" className='opacity-70' radius={[10, 10, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
           
-            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip/>
-              <Bar dataKey="value" fill="#818386" className='opacity-70' radius={[10, 10, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
         </div>
       </div>
     </div>
@@ -125,7 +127,7 @@ function Home() {
 
 function DashboardCard({ title, value, highlight }) {
   return (
-    <div className={`p-4 w-3xl rounded-xl shadow ${highlight ? 'bg-red-950 text-white' : 'bg-gray-400 text-black'} flex flex-col items-center justify-center transition-transform transform hover:scale-105`}>
+    <div className={`p-4 w-3xl rounded-xl shadow ${highlight && value>=10 ? 'bg-red-950 text-white' : 'bg-gray-400 text-black'} flex flex-col items-center justify-center transition-transform transform hover:scale-105`}>
       <h4 className="text-lg font-medium">{title}</h4>
       <p className="text-2xl font-bold mt-1">{value}</p>
     </div>
