@@ -6,7 +6,7 @@ function UserManagement() {
 
     const fetchUsers = async () => {
         try {
-            const res = await axios.get('http://localhost:5007/api/user');
+            const res = await axios.get('https://my-backend-sdbk.onrender.com/api/user');
             setUsers(res.data);
         } catch (err) {
             console.error('Failed to fetch users:', err);
@@ -15,7 +15,7 @@ function UserManagement() {
 
     const handleRoleChange = async (email, newRole) => {
         try {
-            await axios.put('http://localhost:5007/api/user/update-role', { Email: email, Role: newRole });
+            await axios.put('https://my-backend-sdbk.onrender.com/api/user/update-role', { Email: email, Role: newRole });
             // console.log("Role updated:", res.data);
             setUsers(prevUsers =>
                 prevUsers.map(user =>
