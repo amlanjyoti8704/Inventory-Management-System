@@ -9,6 +9,43 @@ import {
 } from 'recharts';
 
 function Home() {
+  const [userRole, setUserRole] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    const fetchCurrentUser = async () => {
+      try {
+        const storedUserStr = localStorage.getItem('loggedInUser');
+        if (!storedUserStr) {
+          console.error("No user found in localStorage");
+          setLoading(false);
+          return;
+        }
+    
+        const storedUser = JSON.parse(storedUserStr);
+        const user = storedUser?.user;
+    
+        if (!user?.email) {
+          console.error("No email found in localStorage");
+          setLoading(false);
+          return;
+        }
+    
+        const res = await axios.get(`https://my-backend-sdbk.onrender.com/api/user/me?email=${user.email}`);
+        setUserRole(res.data.role?.toLowerCase());
+        setUserEmail(res.data.email);
+      } catch (err) {
+        console.error("Error fetching user:", err);
+        alert("Failed to fetch user information. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchCurrentUser();
+    fetchDashboardData();
+  }, []);
 
   const [summary, setSummary] = useState({
     totalCategories: 0,
@@ -31,10 +68,10 @@ function Home() {
     { name: 'Return Requests', value: summary.returnRequests },
   ];
   
-  useEffect(() => {
-    window.scrollTo(0, 0);
-    fetchDashboardData();
-  }, []);
+  // useEffect(() => {
+  //   window.scrollTo(0, 0);
+  //   fetchDashboardData();
+  // }, []);
   
   const fetchDashboardData = async () => {
     try {
@@ -73,17 +110,24 @@ function Home() {
               />
             </h3>
           </div>
-          <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 ">
-            <button
-              onClick={() => document.getElementById('dashboard').scrollIntoView({ behavior: 'smooth' })}
-              className="text-white animate-bounce"
-            >
-              <ChevronDownIcon className="h-10 w-10" />
-            </button>
-          </div>
+          {userRole === 'admin' && (
+            <>
+              <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 ">
+                <button
+                  onClick={() => document.getElementById('dashboard').scrollIntoView({ behavior: 'smooth' })}
+                  className="text-white animate-bounce"
+                >
+                  <ChevronDownIcon className="h-10 w-10" />
+                </button>
+              </div>
+            </>
+          )} 
         </div>
       </div>
 
+
+      { userRole==='admin' &&(
+        <>
       {/* FIX: Add spacer to allow scroll */}
       <div className="h-[20px]"></div>
 
@@ -91,6 +135,7 @@ function Home() {
       <div id='dashboard' className='relative px-6 py-8 bg-transparent shadow-lg max-w-7xl mx-auto min-h-screen flex flex-col justify-center items-center'>
         <h2 className="text-2xl text-white font-bold mb-6">Inventory Dashboard</h2>
 
+      
         <div className="flex flex-col items-center justify-center lg:flex-row lg:items-center lg:justify-center gap-6 mb-8 w-[80vw]">
           <DashboardCard title="Total Categories" value={summary.totalCategories} />
           <DashboardCard title="Total Items" value={summary.totalItems} />
@@ -121,6 +166,8 @@ function Home() {
           
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

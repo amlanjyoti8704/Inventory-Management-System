@@ -256,7 +256,7 @@ function IssueRecord() {
                 <option value="">Select Item</option>
                 {items.map((item) => (
                   <option key={item.item_id} value={item.item_id}>
-                    {item.item_name} (Stock: {item.stock})
+                    {item.item_name}
                   </option>
                 ))}
               </select>
