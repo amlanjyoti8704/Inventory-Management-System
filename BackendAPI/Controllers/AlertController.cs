@@ -7,7 +7,12 @@ using System.Collections.Generic;
 [ApiController]
 public class AlertController : ControllerBase
 {
-    private readonly string _connectionString = "server=localhost;user=root;password=7295883411;database=IT_consumables;";
+    private readonly string _connectionString;
+
+    public AlertController(IConfiguration configuration)
+    {
+        _connectionString = configuration.GetConnectionString("DefaultConnection");
+    } 
 
     [HttpGet]
     public IActionResult GetAlerts(

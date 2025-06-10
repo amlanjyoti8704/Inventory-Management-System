@@ -19,7 +19,7 @@ function ForgotPassword() {
 
 
     try {
-      const res = await fetch('http://localhost:5007/api/user/forgot-password', {
+      const res = await fetch('https://my-backend-sdbk.onrender.com/api/user/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -48,7 +48,7 @@ function ForgotPassword() {
     setMessage('');
 
     try {
-      const res = await fetch('http://localhost:5007/api/user/request-password-reset', {
+      const res = await fetch('https://my-backend-sdbk.onrender.com/api/user/request-password-reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: phone }),
@@ -72,7 +72,7 @@ function ForgotPassword() {
     setMessage('');
 
     try {
-      const res = await fetch('http://localhost:5007/api/user/verify-token-reset', {
+      const res = await fetch('https://my-backend-sdbk.onrender.com/api/user/verify-token-reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
