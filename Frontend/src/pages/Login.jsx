@@ -89,7 +89,7 @@ function Login() {
               </label>
               <Link to="/forgot-password" className="text-blue-400 hover:underline">Forgot password?</Link>            </div>
 
-            <div className='flex items-center justify-between mb-4 text-sm'>
+            {/* <div className='flex items-center justify-between mb-4 text-sm'>
               <label className="flex items-center">
                 <input
                   type="checkbox"
@@ -99,7 +99,7 @@ function Login() {
                 />
                 Remember me
               </label>
-            </div>
+            </div> */}
 
             <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full">
               Login
