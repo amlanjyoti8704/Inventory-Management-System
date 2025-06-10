@@ -236,7 +236,7 @@ function IssueRecord() {
 
   // Check if user is loading
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <div className="p-6 text-white flex min-h-screen justify-center items-center text-2xl">Loading...</div>;
 
   return (
     <div className="p-6 bg-gradient-to-b from-[rgb(0,6,22)] via-[rgb(8,46,66)] to-[rgb(7,7,33)] text-white min-h-screen overflow-scroll flex flex-col justify-center items-center">
@@ -300,6 +300,7 @@ function IssueRecord() {
             <>
               <div className='flex justify-between items-center mb-4'>
                 <h3 className="text-lg font-semibold mb-2">Issue Requests</h3>
+                {userRole === 'admin' && (
                 <div className='flex justify-end gap-2.5 mb-2'>
                     <div
                         className="cursor-pointer bg-gray-600 hover:bg-gray-700 transition-colors p-2 rounded"
@@ -330,6 +331,7 @@ function IssueRecord() {
                       <label className='ml-2' htmlFor="pendingFilter">Show only pending requests</label>
                     </div>             
                 </div>
+                )}
               </div>
 
               <table className="w-full text-left opacity-70">
