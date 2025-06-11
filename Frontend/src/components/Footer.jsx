@@ -9,7 +9,7 @@ const Footer = () => {
         <div className="md:flex md:justify-between w-full flex flex-col md:flex-row justify-center items-center">
             <div className="mb-6 md:mb-0">
                 <Link to="/" className="flex px-30 items-center">
-                    <h1 className="bg-gradient-to-r from-gray-500 to-white bg-clip-text text-transparent text-5xl">IT Consuumables</h1>
+                    <h1 className="bg-gradient-to-r from-gray-500 to-white bg-clip-text text-transparent text-5xl">IT Consumables</h1>
                 </Link>
             </div>
             <div className="grid grid-cols-2 gap-10 sm:gap-20 sm:grid-cols-3">
