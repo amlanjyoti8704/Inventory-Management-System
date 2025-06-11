@@ -75,7 +75,7 @@ function Home() {
   
   const fetchDashboardData = async () => {
     try {
-      const res = await axios.get('http://localhost:5007/api/dashboard/summary');
+      const res = await axios.get('https://my-backend-sdbk.onrender.com/api/dashboard/summary');
       setSummary(res.data);
     } catch (err) {
       console.error('Failed to fetch dashboard summary:', err);

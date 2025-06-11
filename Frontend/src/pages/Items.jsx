@@ -64,13 +64,13 @@ const Items = () => {
   // }, []);
 
   const fetchCategories = () => {
-    axios.get('http://localhost:5007/api/categories')
+    axios.get('https://my-backend-sdbk.onrender.com/api/categories')
       .then(res => setCategories(res.data))
       .catch(err => console.error(err));
   };
 
   const fetchItems = () => {
-    axios.get('http://localhost:5007/api/items')
+    axios.get('https://my-backend-sdbk.onrender.com/api/items')
       .then(res => setItems(res.data))
       .catch(err => console.error(err));
   };
@@ -127,7 +127,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
   try {
     const formattedDate = new Date(purchaseFormData.purchaseDate).toISOString().split('T')[0]; // "2025-06-03"
 
-    await axios.post(`http://localhost:5007/api/purchase-details/${itemId}`, {
+    await axios.post(`https://my-backend-sdbk.onrender.com/api/purchase-details/${itemId}`, {
       quantity: Number(purchaseFormData.quantity),
       price: Number(purchaseFormData.price),
       purchaseDate: formattedDate
@@ -145,7 +145,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
 
   const handleViewMore = (item) => {
     setSelectedItem(item);
-    axios.get(`http://localhost:5007/api/purchase-details/${item.item_id}`)
+    axios.get(`https://my-backend-sdbk.onrender.com/api/purchase-details/${item.item_id}`)
       .then(res => {
         setPurchaseDetails(res.data);
         setShowModal(true);
@@ -173,7 +173,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
 
     if (newItem.item_id) {
       // Update existing item
-      axios.put(`http://localhost:5007/api/items/update-item-with-purchase/${newItem.item_id}`, payload)
+      axios.put(`https://my-backend-sdbk.onrender.com/api/items/update-item-with-purchase/${newItem.item_id}`, payload)
         .then(() => {
           fetchItems();
           resetForm();
@@ -190,7 +190,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
         }
       };
 
-      axios.post('http://localhost:5007/api/items/items-with-purchase', fullPayload)
+      axios.post('https://my-backend-sdbk.onrender.com/api/items/items-with-purchase', fullPayload)
         .then(() => {
           fetchItems();
           resetForm();
@@ -227,7 +227,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
 
   const handleDelete = (itemId) => {
     if (window.confirm("Are you sure you want to delete this item?")) {
-      axios.delete(`http://localhost:5007/api/items/${itemId}`)
+      axios.delete(`https://my-backend-sdbk.onrender.com/api/items/${itemId}`)
         .then(() => {
           fetchItems();
         })

@@ -23,7 +23,7 @@ const PurchaseDetailsModal = ({ item, purchaseDetails, onClose, onDeleted }) => 
     }
 
     try {
-      await axios.post('http://localhost:5007/api/purchase-details/delete', {
+      await axios.post('https://my-backend-sdbk.onrender.com/api/purchase-details/delete', {
         itemId: item.item_id,
         orderIds: selectedOrders,
       });
