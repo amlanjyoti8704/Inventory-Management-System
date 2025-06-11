@@ -246,7 +246,7 @@ function IssueRecord() {
           
 
           {/* USER: Request Item Form */}
-          {userRole === 'user' && (
+          {(userRole === 'user' || userRole ==='admin') && (
             <div className="grid md:grid-row-3 gap-4 mb-6">
               <select
                 value={selectedItemId}

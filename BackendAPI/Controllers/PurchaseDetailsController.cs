@@ -92,5 +92,105 @@ namespace BackendAPI.Controllers
                 return StatusCode(500, new { message = "Internal server error", error = ex.Message });
             }
         }
+
+        [HttpPost("delete")]
+        public async Task<IActionResult> DeletePurchases([FromBody] DeletePurchasesRequest request)
+        {
+            try
+            {
+                if (request.OrderIds == null || request.OrderIds.Count == 0)
+                    return BadRequest(new { message = "No orderIds provided." });
+
+                string connectionString = _configuration.GetConnectionString("DefaultConnection");
+
+                using var connection = new MySqlConnection(connectionString);
+                await connection.OpenAsync();
+
+                using var transaction = await connection.BeginTransactionAsync();
+
+                try
+                {
+                    int totalQuantityToSubtract = 0;
+                    var orderQuantities = new Dictionary<int, int>();
+
+                    // Step 1: Validate and accumulate total quantity to subtract
+                    foreach (var orderId in request.OrderIds)
+                    {
+                        string getQuantityQuery = "SELECT quantity FROM purchase_details WHERE order_id = @orderId AND item_id = @itemId";
+
+                        using var getCommand = new MySqlCommand(getQuantityQuery, connection, (MySqlTransaction)transaction);
+                        getCommand.Parameters.AddWithValue("@orderId", orderId);
+                        getCommand.Parameters.AddWithValue("@itemId", request.ItemId);
+
+                        var result = await getCommand.ExecuteScalarAsync();
+
+                        if (result == null)
+                            continue;
+
+                        int quantity = Convert.ToInt32(result);
+                        totalQuantityToSubtract += quantity;
+                        orderQuantities[orderId] = quantity;
+                    }
+
+                    // Step 2: Check available stock
+                    string checkQtyQuery = "SELECT quantity FROM consumableItems WHERE item_id = @itemId";
+                    using var checkCommand = new MySqlCommand(checkQtyQuery, connection, (MySqlTransaction)transaction);
+                    checkCommand.Parameters.AddWithValue("@itemId", request.ItemId);
+
+                    var currentQtyObj = await checkCommand.ExecuteScalarAsync();
+                    if (currentQtyObj == null)
+                        throw new Exception("Item not found in consumableItems.");
+
+                    int currentQty = Convert.ToInt32(currentQtyObj);
+                    if (totalQuantityToSubtract > currentQty)
+                    {
+                        await transaction.RollbackAsync();
+                        return BadRequest(new
+                        {
+                            message = $"Cannot delete purchases. Required rollback quantity ({totalQuantityToSubtract}) exceeds current stock ({currentQty})."
+                        });
+                    }
+
+                    // Step 3: Perform update and delete
+                    foreach (var kvp in orderQuantities)
+                    {
+                        int orderId = kvp.Key;
+                        int quantityToSubtract = kvp.Value;
+
+                        string updateQuery = @"UPDATE consumableItems 
+                                       SET quantity = quantity - @qty 
+                                       WHERE item_id = @itemId";
+
+                        using var updateCommand = new MySqlCommand(updateQuery, connection, (MySqlTransaction)transaction);
+                        updateCommand.Parameters.AddWithValue("@qty", quantityToSubtract);
+                        updateCommand.Parameters.AddWithValue("@itemId", request.ItemId);
+                        await updateCommand.ExecuteNonQueryAsync();
+
+                        string deleteQuery = "DELETE FROM purchase_details WHERE order_id = @orderId AND item_id = @itemId";
+
+                        using var deleteCommand = new MySqlCommand(deleteQuery, connection, (MySqlTransaction)transaction);
+                        deleteCommand.Parameters.AddWithValue("@orderId", orderId);
+                        deleteCommand.Parameters.AddWithValue("@itemId", request.ItemId);
+                        await deleteCommand.ExecuteNonQueryAsync();
+                    }
+
+                    await transaction.CommitAsync();
+                    return Ok(new { message = "Selected purchases deleted and inventory updated." });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    Console.WriteLine("🔥 Transaction error: " + ex.Message);
+                    return StatusCode(500, new { message = "Transaction failed", error = ex.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("🔥 Server error: " + ex.Message);
+                return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+            }
+        }
+
+
     }
 }

@@ -205,16 +205,16 @@ public class ItemsController : ControllerBase
             // Insert item
             var insertItemCmd = new MySqlCommand(
                 @"INSERT INTO consumableItems 
-                    (name, category_id, model_no, brand, quantity, storage_loc_l1, storage_loc_l2, warranty_expiration) 
+                    (name, category_id, model_no, brand, storage_loc_l1, storage_loc_l2, warranty_expiration) 
                 VALUES 
-                    (@name, @category_id, @model_no, @brand, @quantity, @storage_loc_l1, @storage_loc_l2, @warranty_expiration);
+                    (@name, @category_id, @model_no, @brand, @storage_loc_l1, @storage_loc_l2, @warranty_expiration);
                 SELECT LAST_INSERT_ID();", connection, transaction);
 
             insertItemCmd.Parameters.AddWithValue("@name", request.Item.Name);
             insertItemCmd.Parameters.AddWithValue("@category_id", request.Item.CategoryId);
             insertItemCmd.Parameters.AddWithValue("@model_no", request.Item.ModelNo);
             insertItemCmd.Parameters.AddWithValue("@brand", request.Item.Brand);
-            insertItemCmd.Parameters.AddWithValue("@quantity", request.Item.Quantity);
+            // insertItemCmd.Parameters.AddWithValue("@quantity", request.Item.Quantity);
             insertItemCmd.Parameters.AddWithValue("@storage_loc_l1", request.Item.StorageLocL1);
             insertItemCmd.Parameters.AddWithValue("@storage_loc_l2", request.Item.StorageLocL2);
             insertItemCmd.Parameters.AddWithValue("@warranty_expiration", request.Item.WarrantyExpiration == null ? DBNull.Value : (object)request.Item.WarrantyExpiration);

@@ -26,10 +26,7 @@ namespace BackendAPI.Controllers
             {
                 totalCategories = await ExecuteCountQuery(connection, "SELECT COUNT(*) FROM category"),
                 totalItems = await ExecuteCountQuery(connection, "SELECT COUNT(*) FROM consumableItems"),
-                lowStockItems = await ExecuteCountQuery(connection, @"SELECT COUNT(*) 
-                                                                    FROM consumableItems ci
-                                                                    JOIN category c ON ci.category_id = c.category_id
-                                                                    WHERE ci.quantity < c.threshold"),
+                lowStockItems = await ExecuteCountQuery(connection, @"select count(*) from xyz;"),
                 // totalSuppliers = await ExecuteCountQuery(connection, "SELECT COUNT(*) FROM suppliers"),
                 totalPurchaseOrders = await ExecuteCountQuery(connection, "SELECT COUNT(*) FROM purchase_details"),
                 totalIssues = await ExecuteCountQuery(connection, "SELECT COUNT(*) FROM issue_records"),

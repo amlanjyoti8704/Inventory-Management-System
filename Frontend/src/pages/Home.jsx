@@ -75,7 +75,7 @@ function Home() {
   
   const fetchDashboardData = async () => {
     try {
-      const res = await axios.get('https://my-backend-sdbk.onrender.com/api/dashboard/summary');
+      const res = await axios.get('http://localhost:5007/api/dashboard/summary');
       setSummary(res.data);
     } catch (err) {
       console.error('Failed to fetch dashboard summary:', err);
@@ -139,7 +139,7 @@ function Home() {
         <div className="flex flex-col items-center justify-center lg:flex-row lg:items-center lg:justify-center gap-6 mb-8 w-[80vw]">
           <DashboardCard title="Total Categories" value={summary.totalCategories} />
           <DashboardCard title="Total Items" value={summary.totalItems} />
-          <DashboardCard title="Low Stock Items" value={summary.lowStockItems} highlight/>
+          <DashboardCard title="Low Stock Category Items" value={summary.lowStockItems} highlight/>
           {/* <DashboardCard title="Suppliers" value={summary.totalSuppliers} /> */}
           <DashboardCard title="Purchase Orders" value={summary.totalPurchaseOrders} />
           <DashboardCard title="Issued Records" value={summary.totalIssues} />

@@ -14,7 +14,7 @@ export default function Alerts() {
       if (startDateFilter) params.startDate = startDateFilter;
       if (endDateFilter) params.endDate = endDateFilter;
 
-      const response = await axios.get('https://my-backend-sdbk.onrender.com/api/alert', { params });
+      const response = await axios.get('http://localhost:5007/api/alert', { params });
       setAlerts(response.data);
     } catch (err) {
       console.error('Error fetching alerts:', err);
@@ -76,7 +76,9 @@ export default function Alerts() {
                 <tr>
                   <th className="border-b px-4 py-2 rounded-tl-lg">Log ID</th>
                   <th className="border-b px-4 py-2">Item ID</th>
+                  <th className='border-b px-4 py-2'>CATEGORY ID</th>
                   <th className="border-b px-4 py-2">Item Name</th>
+                  <th className="border-b px-4 py-2">CATEGORY NAME</th>
                   <th className="border-b px-4 py-2">Current Quantity</th>
                   <th className="border-b px-4 py-2">Message</th>
                   <th className="border-b px-4 py-2 rounded-tr-lg">Time</th>
@@ -87,7 +89,9 @@ export default function Alerts() {
                   <tr key={alert.log_id} className="hover:bg-gray-800 transition-colors text-center">
                     <td className="border-b px-4 py-2">{alert.log_id}</td>
                     <td className="border-b px-4 py-2">{alert.item_id}</td>
+                    <td className="border-b px-4 py-2">{alert.category_id}</td>
                     <td className="border-b px-4 py-2">{alert.name}</td>
+                    <td className="border-b px-4 py-2">{alert.category_name}</td>
                     <td className="border-b px-4 py-2">{alert.current_quantity}</td>
                     <td className="border border-white px-4 py-2 text-red-500">{alert.alert_message}</td>
                     <td className="border-b px-4 py-2">{alert.alert_time}</td>
