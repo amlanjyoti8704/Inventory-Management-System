@@ -251,7 +251,7 @@ function IssueRecord() {
               <select
                 value={selectedItemId}
                 onChange={(e) => setSelectedItemId(e.target.value)}
-                className="border px-3 py-2 rounded"
+                className="bg-slate-900 text-white border px-3 py-2 rounded"
               >
                 <option value="">Select Item</option>
                 {items.map((item) => (

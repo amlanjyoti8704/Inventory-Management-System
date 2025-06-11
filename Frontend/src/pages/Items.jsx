@@ -265,7 +265,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
           {showFilters && (
           <div className="mb-4 flex flex-wrap gap-4">
             <select
-              className="border p-2"
+              className="bg-slate-900 text-white border p-2"
               value={filterCategoryId}
               onChange={(e) => setFilterCategoryId(e.target.value)}
             >
@@ -274,7 +274,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
                 <option
                 key={cat.categoryId} 
                 value={cat.categoryId}
-                className='text-gray-700'
+                className='text-white'
                 >
                   {cat.categoryName}
                   </option>
@@ -303,7 +303,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
           <form onSubmit={handleAddItem} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <input className="border p-2 rounded-lg" name="name" value={newItem.name} onChange={handleInputChange} placeholder="Item Name" required />
             <select
-              className="border p-2 rounded-lg"
+              className="bg-slate-900 text-white border p-2 rounded-lg"
               name="category_id"
               value={newItem.category_id}
               onChange={handleInputChange}
