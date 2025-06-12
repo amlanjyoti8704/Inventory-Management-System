@@ -1,5 +1,8 @@
 download and install nodejs (LTS) to run frontend in VsCode
+for mac:
 https://nodejs.org/dist/v22.16.0/node-v22.16.0.pkg
+for windows:
+https://nodejs.org/en
 
 Open vs code , then open the terminal and run
 cd Frontend
