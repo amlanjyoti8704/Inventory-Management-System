@@ -192,7 +192,14 @@ function Navbar() {
                                     )}
                                 </div>
                         )} 
-                        </div>                   
+                        </div> 
+                        {/* {loggedInUser && (
+                            <div className="flex ml-4 items-center space-x-4">
+                                <Link to="/profile" className="text-white hover:text-blue-400">
+                                    {loggedInUser.user.role === 'admin' ? 'Admin' : 'User'}
+                                </Link>
+                            </div>
+                        )}                   */}
 
                         {loggedInUser && (
                             <button onClick={handleLogout} className="bg-red-500 px-3 py-1 ml-10 rounded">
