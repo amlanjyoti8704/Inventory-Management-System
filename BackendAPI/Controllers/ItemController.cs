@@ -8,8 +8,12 @@ using System.Collections.Generic;
 [ApiController]
 public class ItemsController : ControllerBase
 {
-    private readonly string _connectionString = "server=localhost;user=root;password=7295883411;database=IT_consumables;";
-    // private string connectionString = "server=localhost;user=amlan;password=test1234;database=IT_consumables;";
+    private readonly string _connectionString;
+
+    public ItemsController(IConfiguration configuration)
+    {
+        _connectionString = configuration.GetConnectionString("DefaultConnection");
+    }    // private string connectionString = "server=localhost;user=amlan;password=test1234;database=IT_consumables;";
 
     [HttpGet]
     public IActionResult GetAllItems()

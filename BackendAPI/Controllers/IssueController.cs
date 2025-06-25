@@ -321,7 +321,7 @@ public class IssueController : ControllerBase
     {
         List<IssueRecords> pendingIssues = new List<IssueRecords>();
 
-        var db = new DbContext();
+        var db = new DbContext(_config);
         using var conn = db.GetConnection();
         conn.Open();
 

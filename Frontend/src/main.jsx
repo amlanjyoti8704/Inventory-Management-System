@@ -1,5 +1,6 @@
 // main.jsx or index.jsx
 import React from 'react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
@@ -80,6 +81,7 @@ const router = createBrowserRouter(
           }
         />
       </Route>
+      <SpeedInsights />
     </>
   )
 );
