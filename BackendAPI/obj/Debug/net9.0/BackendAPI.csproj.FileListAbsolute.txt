@@ -55,6 +55,7 @@
 /Users/amlanjyoti/testProject/BackendAPI/bin/Debug/net9.0/Twilio.dll
 /Users/amlanjyoti/testProject/BackendAPI/bin/Debug/net9.0/MailKit.dll
 /Users/amlanjyoti/testProject/BackendAPI/bin/Debug/net9.0/MimeKit.dll
+<<<<<<< HEAD
 /Users/amlanjyoti/Desktop/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/appsettings.Development.json
 /Users/amlanjyoti/Desktop/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/appsettings.json
 /Users/amlanjyoti/Desktop/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/BackendAPI.staticwebassets.endpoints.json
@@ -114,3 +115,7 @@
 /Users/amlanjyoti/Desktop/Vocational training/testProject/BackendAPI/obj/Debug/net9.0/ref/BackendAPI.dll
 /Users/amlanjyoti/Desktop/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/DotNetEnv.dll
 /Users/amlanjyoti/Desktop/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/Sprache.dll
+=======
+/Users/amlanjyoti/testProject/BackendAPI/bin/Debug/net9.0/DotNetEnv.dll
+/Users/amlanjyoti/testProject/BackendAPI/bin/Debug/net9.0/Sprache.dll
+>>>>>>> 2757a4673e46a02a8ff5010a0f8fb4e5a095eca6

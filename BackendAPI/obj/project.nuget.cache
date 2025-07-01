@@ -120,5 +120,15 @@
     "/Users/amlanjyoti/.nuget/packages/twilio/7.11.1/twilio.7.11.1.nupkg.sha512",
     "/Users/amlanjyoti/.nuget/packages/zstdsharp.port/0.8.5/zstdsharp.port.0.8.5.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "Undefined",
+      "level": "Warning",
+      "message": "Problem reading the cache file /Users/amlanjyoti/Desktop/Vocational training/testProject/BackendAPI/obj/project.nuget.cache : '<' is an invalid start of a property name. Expected a '\"'. Path: $ | LineNumber: 2 | BytePositionInLine: 0.",
+      "projectPath": "/Users/amlanjyoti/Desktop/Vocational training/testProject/BackendAPI/BackendAPI.csproj",
+      "warningLevel": 1,
+      "filePath": "/Users/amlanjyoti/Desktop/Vocational training/testProject/BackendAPI/BackendAPI.csproj",
+      "targetGraphs": []
+    }
+  ]
 }

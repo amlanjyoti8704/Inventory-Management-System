@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Twilio;
+// using Twilio;
 using DotNetEnv; // ✅ Import DotNetEnv
 
 var builder = WebApplication.CreateBuilder(args);
@@ -50,6 +50,6 @@ app.MapControllers();
 
 // ✅ Initialize Twilio with values from .env
 var config = app.Services.GetRequiredService<IConfiguration>();
-TwilioClient.Init(config["Twilio:AccountSid"], config["Twilio:AuthToken"]);
+// TwilioClient.Init(config["Twilio:AccountSid"], config["Twilio:AuthToken"]);
 
 app.Run();
