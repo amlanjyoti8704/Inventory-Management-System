@@ -55,3 +55,5 @@
 /Users/amlanjyoti/testProject/BackendAPI/bin/Debug/net9.0/Twilio.dll
 /Users/amlanjyoti/testProject/BackendAPI/bin/Debug/net9.0/MailKit.dll
 /Users/amlanjyoti/testProject/BackendAPI/bin/Debug/net9.0/MimeKit.dll
+/Users/amlanjyoti/testProject/BackendAPI/bin/Debug/net9.0/DotNetEnv.dll
+/Users/amlanjyoti/testProject/BackendAPI/bin/Debug/net9.0/Sprache.dll
