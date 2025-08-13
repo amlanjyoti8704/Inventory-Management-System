@@ -21,7 +21,18 @@ function SignUp() {
     }
 
     try {
-      const response = await fetch("https://my-backend-sdbk.onrender.com/api/user/signup", {
+      // const response = await fetch("https://my-backend-sdbk.onrender.com/api/user/signup", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify({
+      //     email: email.trim(),
+      //     username: username.trim(),
+      //     password: password.trim(),
+      //   }),
+      // });
+      const response = await fetch("http://localhost:5007/api/user/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

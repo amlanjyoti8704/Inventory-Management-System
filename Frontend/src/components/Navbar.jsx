@@ -17,7 +17,8 @@ function Navbar() {
     useEffect(() => {
         const fetchPendingCounts = async () => {
           try {
-            const res = await axios.get('https://my-backend-sdbk.onrender.com/api/issue/pending-requests');
+            // const res = await axios.get('https://my-backend-sdbk.onrender.com/api/issue/pending-requests');
+            const res = await axios.get('http://localhost:5007/api/issue/pending-requests');
             const data = res.data || [];
             console.log('API Data:', data);
             const issueCount = data.filter(r => r.status === 'requested' || r.status === 'pending').length;

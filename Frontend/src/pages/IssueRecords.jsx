@@ -37,7 +37,8 @@ function IssueRecord() {
           return;
         }
     
-        const res = await axios.get(`https://my-backend-sdbk.onrender.com/api/user/me?email=${user.email}`);
+        // const res = await axios.get(`https://my-backend-sdbk.onrender.com/api/user/me?email=${user.email}`);
+        const res=await axios.get(`http://localhost:5007/api/user/me?email=${user.email}`);
         setUserRole(res.data.role?.toLowerCase());
         setUserEmail(res.data.email);
       } catch (err) {
@@ -63,7 +64,8 @@ function IssueRecord() {
   useEffect(() => {
     const fetchPendingCounts = async () => {
       try {
-        const res = await axios.get('https://my-backend-sdbk.onrender.com/api/issue/pending-requests');
+        // const res = await axios.get('https://my-backend-sdbk.onrender.com/api/issue/pending-requests');
+        const res = await axios.get('http://localhost:5007/api/issue/pending-requests');
         const data = res.data || [];
         console.log('API Data:', data);
         const issueCount = data.filter(r => r.status === 'requested' || r.status === 'pending').length;
@@ -95,7 +97,8 @@ function IssueRecord() {
 
   const fetchItems = async () => {
     try {
-      const res = await axios.get('https://my-backend-sdbk.onrender.com/api/issue/items');
+      // const res = await axios.get('https://my-backend-sdbk.onrender.com/api/issue/items');
+      const res = await axios.get('http://localhost:5007/api/issue/items');
       setItems(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Failed to fetch items:", err);
@@ -105,7 +108,8 @@ function IssueRecord() {
 
   const fetchIssueList = async () => {
     try {
-      const res = await axios.get('https://my-backend-sdbk.onrender.com/api/issue');
+      // const res = await axios.get('https://my-backend-sdbk.onrender.com/api/issue');
+      const res = await axios.get('http://localhost:5007/api/issue');
       const data = Array.isArray(res.data) ? res.data : [];
 
       if (userRole === 'admin') {
@@ -144,7 +148,15 @@ function IssueRecord() {
     }
   
     try {
-      await axios.post('https://my-backend-sdbk.onrender.com/api/issue', {
+      // await axios.post('https://my-backend-sdbk.onrender.com/api/issue', {
+      //   item_id: selectedItemId,
+      //   issued_to: username.trim(),
+      //   quantity: parseInt(quantity),
+      //   department: department.trim(),
+      //   requested_by: userEmail,
+      //   status: 'requested',
+      // });
+      await axios.post('http://localhost:5007/api/issue', {
         item_id: selectedItemId,
         issued_to: username.trim(),
         quantity: parseInt(quantity),
@@ -168,7 +180,8 @@ function IssueRecord() {
 
   const handleReturn = async (issue_id) => {
     try {
-      await axios.put(`https://my-backend-sdbk.onrender.com/api/issue/request-return/${issue_id}`);
+      // await axios.put(`https://my-backend-sdbk.onrender.com/api/issue/request-return/${issue_id}`);
+      await axios.put(`http://localhost:5007/api/issue/request-return/${issue_id}`);
       alert("Return request sent.");
       fetchIssueList();
     } catch (err) {
@@ -178,7 +191,8 @@ function IssueRecord() {
 
   const handleApprove = async (issueId) => {
     try {
-      const res = await axios.put(`https://my-backend-sdbk.onrender.com/api/issue/approve/${issueId}`);
+      // const res = await axios.put(`https://my-backend-sdbk.onrender.com/api/issue/approve/${issueId}`);
+      const res = await axios.put(`http://localhost:5007/api/issue/approve/${issueId}`);
       alert(res.data.message);
       fetchIssueList();
     } catch (err) {
@@ -188,7 +202,8 @@ function IssueRecord() {
   
   const handleReject = async (issueId) => {
     try {
-      const res = await axios.put(`https://my-backend-sdbk.onrender.com/api/issue/decline/${issueId}`);
+      // const res = await axios.put(`https://my-backend-sdbk.onrender.com/api/issue/decline/${issueId}`);
+      const res = await axios.put(`http://localhost:5007/api/issue/decline/${issueId}`);
       alert(res.data.message);
       fetchIssueList();
     } catch (err) {
@@ -198,7 +213,8 @@ function IssueRecord() {
   const handleDelete = async (issueId) => {
     if (!window.confirm('Are you sure you want to delete this issue record?')) return;
     try {
-      await axios.delete(`https://my-backend-sdbk.onrender.com/api/issue/${issueId}`);
+      // await axios.delete(`https://my-backend-sdbk.onrender.com/api/issue/${issueId}`);
+      await axios.delete(`http://localhost:5007/api/issue/${issueId}`);
       fetchIssueList();
     } catch (err) {
       alert('Error deleting issue record');
@@ -207,7 +223,8 @@ function IssueRecord() {
 
   const handleAcceptReturn = async (issueId) => {
     try {
-      await axios.put(`https://my-backend-sdbk.onrender.com/api/issue/approve-return/${issueId}`);
+      // await axios.put(`https://my-backend-sdbk.onrender.com/api/issue/approve-return/${issueId}`);
+      await axios.put(`http://localhost:5007/api/issue/approve-return/${issueId}`);
       alert("Return approved.");
       fetchIssueList();
     } catch (err) {
@@ -218,7 +235,8 @@ function IssueRecord() {
   const handleRejectReturn = async (issue_id) => {
     try {
       console.log("Rejecting return for issue_id:", issue_id); // helpful debug
-      await axios.put(`https://my-backend-sdbk.onrender.com/api/issue/reject-return/${issue_id}`);
+      // await axios.put(`https://my-backend-sdbk.onrender.com/api/issue/reject-return/${issue_id}`);
+      await axios.put(`http://localhost:5007/api/issue/reject-return/${issue_id}`);
       alert("Return rejected.");
       fetchIssueList();
     } catch (err) {

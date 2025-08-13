@@ -18,7 +18,11 @@ function ResetPassword() {
     }
 
     try {
-      const res = await axios.post('https://my-backend-sdbk.onrender.com/api/user/reset-password', {
+      // const res = await axios.post('https://my-backend-sdbk.onrender.com/api/user/reset-password', {
+      //   token,
+      //   newPassword,
+      // });
+      const res = await axios.post('http://localhost:5007/api/user/reset-password', {
         token,
         newPassword,
       });

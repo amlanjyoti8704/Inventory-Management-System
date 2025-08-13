@@ -14,7 +14,8 @@ export default function Alerts() {
       if (startDateFilter) params.startDate = startDateFilter;
       if (endDateFilter) params.endDate = endDateFilter;
 
-      const response = await axios.get('https://my-backend-sdbk.onrender.com/api/alert', { params });
+      // const response = await axios.get('https://my-backend-sdbk.onrender.com/api/alert', { params });
+      const response = await axios.get('http://localhost:5007/api/alert', { params });
       setAlerts(response.data);
     } catch (err) {
       console.error('Error fetching alerts:', err);

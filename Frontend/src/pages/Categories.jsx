@@ -17,7 +17,8 @@ function CategoryPage() {
 
   const fetchCategories = async () => {
     try {
-      const res = await axios.get('https://my-backend-sdbk.onrender.com/api/categories');
+      // const res = await axios.get('https://my-backend-sdbk.onrender.com/api/categories');
+      const res = await axios.get('http://localhost:5007/api/categories');
       setCategories(res.data);
     } catch (err) {
       setError('Failed to fetch categories');
@@ -44,13 +45,21 @@ function CategoryPage() {
 
     try {
       if (editingId !== null) {
-        await axios.put(`https://my-backend-sdbk.onrender.com/api/categories/${editingId}`, {
+        // await axios.put(`https://my-backend-sdbk.onrender.com/api/categories/${editingId}`, {
+        //   categoryName: categoryName,
+        //   threshold: parseInt(threshold)
+        // });
+        await axios.put(`http://localhost:5007/api/categories/${editingId}`, {
           categoryName: categoryName,
           threshold: parseInt(threshold)
         });
         setSuccess('Category updated successfully!');
       } else {
-        await axios.post('https://my-backend-sdbk.onrender.com/api/categories', {
+        // await axios.post('https://my-backend-sdbk.onrender.com/api/categories', {
+        //   categoryName: categoryName,
+        //   threshold: parseInt(threshold)
+        // });
+        await axios.post('http://localhost:5007/api/categories', {
           categoryName: categoryName,
           threshold: parseInt(threshold)
         });
@@ -68,7 +77,8 @@ function CategoryPage() {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this category?')) return;
     try {
-      await axios.delete(`https://my-backend-sdbk.onrender.com/api/categories/${id}`);
+      // await axios.delete(`https://my-backend-sdbk.onrender.com/api/categories/${id}`);
+      await axios.delete(`http://localhost:5007/api/categories/${id}`);
       setSuccess('Category deleted successfully!');
       fetchCategories();
     } catch (err) {

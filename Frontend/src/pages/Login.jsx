@@ -14,9 +14,16 @@ function Login() {
     setError('');
   
     try {
-      const response = await fetch("https://my-backend-sdbk.onrender.com/api/user/login", {
+      // const response = await fetch("https://my-backend-sdbk.onrender.com/api/user/login", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json"
+      //   },
+      //   body: JSON.stringify({ email, password })
+      // });
+      const response = await fetch("http://localhost:5007/api/user/login", {
         method: "POST",
-        headers: {
+        headers: { 
           "Content-Type": "application/json"
         },
         body: JSON.stringify({ email, password })
