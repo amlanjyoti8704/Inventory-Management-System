@@ -21,7 +21,7 @@ function Login() {
       //   },
       //   body: JSON.stringify({ email, password })
       // });
-      const response = await fetch("http://localhost:5007/api/user/login", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URI}/api/user/login`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json"

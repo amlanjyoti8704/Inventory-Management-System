@@ -22,7 +22,7 @@ function ResetPassword() {
       //   token,
       //   newPassword,
       // });
-      const res = await axios.post('http://localhost:5007/api/user/reset-password', {
+      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URI}/api/user/reset-password`, {
         token,
         newPassword,
       });

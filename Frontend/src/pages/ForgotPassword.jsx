@@ -24,7 +24,7 @@ function ForgotPassword() {
       //   headers: { 'Content-Type': 'application/json' },
       //   body: JSON.stringify({ email }),
       // });
-      const res=await fetch('http://localhost:5007/api/user/forgot-password', {
+      const res=await fetch(`${import.meta.env.VITE_BACKEND_URI}/api/user/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -58,7 +58,7 @@ function ForgotPassword() {
       //   headers: { 'Content-Type': 'application/json' },
       //   body: JSON.stringify({ phoneNumber: phone }),
       // });
-      const res = await fetch('http://localhost:5007/api/user/request-password-reset', {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URI}/api/user/request-password-reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber: phone }),
@@ -91,7 +91,7 @@ function ForgotPassword() {
       //     newPassword,
       //   }),
       // });
-      const res = await fetch('http://localhost:5007/api/user/verify-token-reset', {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URI}/api/user/verify-token-reset`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

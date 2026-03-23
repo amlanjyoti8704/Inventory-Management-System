@@ -27,7 +27,7 @@ const PurchaseDetailsModal = ({ item, purchaseDetails, onClose, onDeleted }) => 
       //   itemId: item.item_id,
       //   orderIds: selectedOrders,
       // });
-      await axios.post('http://localhost:5007/api/purchase-details/delete', {
+      await axios.post(`${import.meta.env.VITE_BACKEND_URI}/api/purchase-details/delete`, {
         itemId: item.item_id,
         orderIds: selectedOrders,
       });

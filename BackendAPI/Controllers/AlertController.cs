@@ -1,17 +1,17 @@
 using Microsoft.AspNetCore.Mvc;
-using MySqlConnector;
-using System.Data;
+using MongoDB.Driver;
 using System.Collections.Generic;
+using System.Linq;
 
 [Route("api/[controller]")]
 [ApiController]
 public class AlertController : ControllerBase
 {
-    private readonly string _connectionString;
+    private readonly MongoDbContext _context;
 
-    public AlertController(IConfiguration configuration)
+    public AlertController(MongoDbContext context)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection");
+        _context = context;
     }
 
     [HttpGet]
@@ -21,59 +21,50 @@ public class AlertController : ControllerBase
         [FromQuery] DateTime? startDate,
         [FromQuery] DateTime? endDate)
     {
-        var alerts = new List<dynamic>();
+        var filterBuilder = Builders<AlertLog>.Filter;
+        var filters = new List<FilterDefinition<AlertLog>>();
 
-        using var connection = new MySqlConnection(_connectionString);
-        connection.Open();
+        if (item_id.HasValue)
+            filters.Add(filterBuilder.Eq(a => a.ItemId, item_id.Value));
+        if (category_id.HasValue)
+            filters.Add(filterBuilder.Eq(a => a.CategoryId, category_id.Value));
+        if (startDate.HasValue)
+            filters.Add(filterBuilder.Gte(a => a.AlertTime, startDate.Value));
+        if (endDate.HasValue)
+            filters.Add(filterBuilder.Lte(a => a.AlertTime, endDate.Value));
 
-        var conditions = new List<string>();
-        if (item_id.HasValue) conditions.Add("a.item_id = @item_id");
-        if (category_id.HasValue) conditions.Add("a.category_id = @category_id");
-        if (startDate.HasValue) conditions.Add("a.alert_time >= @startDate");
-        if (endDate.HasValue) conditions.Add("a.alert_time <= @endDate");
+        var filter = filters.Count > 0
+            ? filterBuilder.And(filters)
+            : filterBuilder.Empty;
 
-        var whereClause = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : "";
+        var alertDocs = _context.AlertLogs
+            .Find(filter)
+            .SortByDescending(a => a.AlertTime)
+            .ToList();
 
-        var query = $@"
-            SELECT 
-                a.log_id,
-                a.item_id,
-                a.category_id,
-                i.name,
-                a.category_name,
-                a.current_quantity,
-                a.alert_message,
-                a.alert_time
-            FROM alert_log a
-            LEFT JOIN consumableItems i ON a.item_id = i.item_id
-            {whereClause}
-            ORDER BY a.alert_time DESC
-        ";
+        // Left join with consumableItems to get item name
+        var itemIds = alertDocs
+            .Where(a => a.ItemId.HasValue)
+            .Select(a => a.ItemId.Value)
+            .Distinct()
+            .ToList();
 
-        var cmd = new MySqlCommand(query, connection);
+        var items = _context.ConsumableItems
+            .Find(Builders<ConsumableItems>.Filter.In(i => i.ItemId, itemIds))
+            .ToList()
+            .ToDictionary(i => i.ItemId, i => i.Name);
 
-        if (item_id.HasValue) cmd.Parameters.AddWithValue("@item_id", item_id.Value);
-        if (category_id.HasValue) cmd.Parameters.AddWithValue("@category_id", category_id.Value);
-        if (startDate.HasValue) cmd.Parameters.AddWithValue("@startDate", startDate.Value);
-        if (endDate.HasValue) cmd.Parameters.AddWithValue("@endDate", endDate.Value);
-
-        using var reader = cmd.ExecuteReader();
-        while (reader.Read())
+        var alerts = alertDocs.Select(a => new
         {
-            alerts.Add(new
-            {
-                log_id = reader["log_id"] is DBNull ? "N/A" : reader["log_id"].ToString(),
-                item_id = reader["item_id"] is DBNull ? "N/A" : reader["item_id"].ToString(),
-                category_id = reader["category_id"] is DBNull ? "N/A" : reader["category_id"].ToString(),
-                name = reader["name"] is DBNull ? "N/A" : reader["name"].ToString(),
-                category_name = reader["category_name"] is DBNull ? "N/A" : reader["category_name"].ToString(),
-                current_quantity = reader["current_quantity"] is DBNull ? "N/A" : reader["current_quantity"].ToString(),
-                alert_message = reader["alert_message"] is DBNull ? "N/A" : reader["alert_message"].ToString(),
-                alert_time = reader["alert_time"] is DBNull
-                    ? "N/A"
-                    : Convert.ToDateTime(reader["alert_time"]).ToString("yyyy-MM-dd HH:mm:ss")
-            });
-        }
+            log_id = a.LogId.ToString(),
+            item_id = a.ItemId?.ToString() ?? "N/A",
+            category_id = a.CategoryId?.ToString() ?? "N/A",
+            name = a.ItemId.HasValue && items.ContainsKey(a.ItemId.Value) ? items[a.ItemId.Value] : "N/A",
+            category_name = a.CategoryName ?? "N/A",
+            current_quantity = a.CurrentQuantity.ToString(),
+            alert_message = a.AlertMessage ?? "N/A",
+            alert_time = a.AlertTime.ToString("yyyy-MM-dd HH:mm:ss")
+        }).ToList();
 
         return Ok(alerts);
     }

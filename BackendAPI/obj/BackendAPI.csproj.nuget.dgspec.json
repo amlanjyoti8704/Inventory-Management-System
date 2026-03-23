@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/amlanjyoti/Desktop/Vocational training/testProject/BackendAPI/BackendAPI.csproj": {}
+    "/Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/BackendAPI.csproj": {}
   },
   "projects": {
-    "/Users/amlanjyoti/Desktop/Vocational training/testProject/BackendAPI/BackendAPI.csproj": {
+    "/Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/BackendAPI.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/amlanjyoti/Desktop/Vocational training/testProject/BackendAPI/BackendAPI.csproj",
+        "projectUniqueName": "/Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/BackendAPI.csproj",
         "projectName": "BackendAPI",
-        "projectPath": "/Users/amlanjyoti/Desktop/Vocational training/testProject/BackendAPI/BackendAPI.csproj",
+        "projectPath": "/Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/BackendAPI.csproj",
         "packagesPath": "/Users/amlanjyoti/.nuget/packages/",
-        "outputPath": "/Users/amlanjyoti/Desktop/Vocational training/testProject/BackendAPI/obj/",
+        "outputPath": "/Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/amlanjyoti/.nuget/NuGet/NuGet.Config"
@@ -60,13 +60,9 @@
               "target": "Package",
               "version": "[9.0.5, )"
             },
-            "MySql.Data": {
+            "MongoDB.Driver": {
               "target": "Package",
-              "version": "[9.3.0, )"
-            },
-            "MySqlConnector": {
-              "target": "Package",
-              "version": "[2.4.0, )"
+              "version": "[3.4.0, )"
             },
             "Twilio": {
               "target": "Package",

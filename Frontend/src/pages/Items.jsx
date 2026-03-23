@@ -25,7 +25,7 @@ const Items = () => {
     category_id: '',
     model_no: '',
     brand: '',
-    // quantity: '',
+    quantity: '',
     storage_loc_l1: '',
     storage_loc_l2: '',
     warrenty_expiration: '',
@@ -65,14 +65,14 @@ const Items = () => {
 
   const fetchCategories = () => {
     // axios.get('https://my-backend-sdbk.onrender.com/api/categories')
-    axios.get('http://localhost:5007/api/categories')
+    axios.get(`${import.meta.env.VITE_BACKEND_URI}/api/categories`)
       .then(res => setCategories(res.data))
       .catch(err => console.error(err));
   };
 
   const fetchItems = () => {
     // axios.get('https://my-backend-sdbk.onrender.com/api/items')
-    axios.get('http://localhost:5007/api/items')
+    axios.get(`${import.meta.env.VITE_BACKEND_URI}/api/items`)
       .then(res => setItems(res.data))
       .catch(err => console.error(err));
   };
@@ -134,7 +134,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
     //   price: Number(purchaseFormData.price),
     //   purchaseDate: formattedDate
     // });
-    await axios.post(`http://localhost:5007/api/purchase-details/${itemId}`, {
+    await axios.post(`${import.meta.env.VITE_BACKEND_URI}/api/purchase-details/${itemId}`, {
       quantity: Number(purchaseFormData.quantity),
       price: Number(purchaseFormData.price),
       purchaseDate: formattedDate
@@ -153,7 +153,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
   const handleViewMore = (item) => {
     setSelectedItem(item);
     // axios.get(`https://my-backend-sdbk.onrender.com/api/purchase-details/${item.item_id}`)
-    axios.get(`http://localhost:5007/api/purchase-details/${item.item_id}`)
+    axios.get(`${import.meta.env.VITE_BACKEND_URI}/api/purchase-details/${item.item_id}`)
       .then(res => {
         setPurchaseDetails(res.data);
         setShowModal(true);
@@ -173,7 +173,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
       CategoryId: newItem.category_id,
       ModelNo: newItem.model_no,
       Brand: newItem.brand,
-      // Quantity: newItem.quantity,
+      Quantity: newItem.quantity,
       StorageLocL1: newItem.storage_loc_l1,
       StorageLocL2: newItem.storage_loc_l2,
       WarrentyExpiration: newItem.warrenty_expiration,
@@ -182,7 +182,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
     if (newItem.item_id) {
       // Update existing item
       // axios.put(`https://my-backend-sdbk.onrender.com/api/items/update-item-with-purchase/${newItem.item_id}`, payload)
-      axios.put(`http://localhost:5007/api/items/update-item-with-purchase/${newItem.item_id}`, payload)
+      axios.put(`${import.meta.env.VITE_BACKEND_URI}/api/items/update-item-with-purchase/${newItem.item_id}`, payload)
         .then(() => {
           fetchItems();
           resetForm();
@@ -200,7 +200,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
       };
 
       // axios.post('https://my-backend-sdbk.onrender.com/api/items/items-with-purchase', fullPayload)
-      axios.post('http://localhost:5007/api/items/items-with-purchase', fullPayload)
+      axios.post(`${import.meta.env.VITE_BACKEND_URI}/api/items/items-with-purchase`, fullPayload)
         .then(() => {
           fetchItems();
           resetForm();
@@ -215,7 +215,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
       category_id: '',
       model_no: '',
       brand: '',
-      // quantity: '',
+      quantity: '',
       storage_loc_l1: '',
       storage_loc_l2: '',
       warrenty_expiration: '',
@@ -238,7 +238,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
   const handleDelete = (itemId) => {
     if (window.confirm("Are you sure you want to delete this item?")) {
       // axios.delete(`https://my-backend-sdbk.onrender.com/api/items/${itemId}`)
-      axios.delete(`http://localhost:5007/api/items/${itemId}`)
+      axios.delete(`${import.meta.env.VITE_BACKEND_URI}/api/items/${itemId}`)
         .then(() => {
           fetchItems();
         })

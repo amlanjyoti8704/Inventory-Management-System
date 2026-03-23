@@ -1,6 +1,5 @@
-
 using Microsoft.AspNetCore.Mvc;
-using MySql.Data.MySqlClient;
+using MongoDB.Driver;
 using System.Collections.Generic;
 using Microsoft.Extensions.Configuration;
 
@@ -8,165 +7,121 @@ using Microsoft.Extensions.Configuration;
 [Route("api/[controller]")]
 public class CategoriesController : ControllerBase
 {
-    private readonly IConfiguration _configuration;
+    private readonly MongoDbContext _context;
 
-    public CategoriesController(IConfiguration configuration)
+    public CategoriesController(MongoDbContext context)
     {
-        _configuration = configuration;
+        _context = context;
     }
 
     [HttpGet]
     public IActionResult GetCategories([FromQuery] string search = "", [FromQuery] string sortBy = "category_id", [FromQuery] string sortOrder = "asc", [FromQuery] int? thresholdMin = null)
     {
-        List<Category> categories = new List<Category>();
-
-        using (MySqlConnection conn = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+        try
         {
-            try
+            var filterBuilder = Builders<Category>.Filter;
+            var filters = new List<FilterDefinition<Category>>();
+
+            if (!string.IsNullOrWhiteSpace(search))
             {
-                conn.Open();
-
-                // Build dynamic SQL query
-                string query = "SELECT category_id, category_name, threshold FROM category WHERE 1=1";
-
-                if (!string.IsNullOrWhiteSpace(search))
-                {
-                    query += " AND category_name LIKE @Search";
-                }
-
-                if (thresholdMin.HasValue)
-                {
-                    query += " AND threshold >= @ThresholdMin";
-                }
-
-                // Sanitize sortBy and sortOrder
-                string safeSortBy = sortBy switch
-                {
-                    "category_id" => "category_id",
-                    "category_name" => "category_name",
-                    "threshold" => "threshold",
-                    _ => "category_id"
-                };
-
-                string safeSortOrder = sortOrder.ToLower() == "desc" ? "DESC" : "ASC";
-
-                query += $" ORDER BY {safeSortBy} {safeSortOrder}";
-
-                using (MySqlCommand cmd = new MySqlCommand(query, conn))
-                {
-                    if (!string.IsNullOrWhiteSpace(search))
-                        cmd.Parameters.AddWithValue("@Search", $"%{search}%");
-
-                    if (thresholdMin.HasValue)
-                        cmd.Parameters.AddWithValue("@ThresholdMin", thresholdMin.Value);
-
-                    using (MySqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            categories.Add(new Category
-                            {
-                                CategoryId = reader.GetInt32("category_id"),
-                                CategoryName = reader.GetString("category_name"),
-                                Threshold = reader.GetInt32("threshold")
-                            });
-                        }
-                    }
-                }
-
-                return Ok(categories);
+                filters.Add(filterBuilder.Regex(c => c.CategoryName, new MongoDB.Bson.BsonRegularExpression(search, "i")));
             }
-            catch (Exception ex)
+
+            if (thresholdMin.HasValue)
             {
-                return StatusCode(500, new { message = "Error retrieving categories", error = ex.Message });
+                filters.Add(filterBuilder.Gte(c => c.Threshold, thresholdMin.Value));
             }
+
+            var filter = filters.Count > 0
+                ? filterBuilder.And(filters)
+                : filterBuilder.Empty;
+
+            // Build sort definition
+            SortDefinition<Category> sort;
+            var sortBuilder = Builders<Category>.Sort;
+
+            sort = sortBy switch
+            {
+                "category_name" => sortOrder.ToLower() == "desc"
+                    ? sortBuilder.Descending(c => c.CategoryName)
+                    : sortBuilder.Ascending(c => c.CategoryName),
+                "threshold" => sortOrder.ToLower() == "desc"
+                    ? sortBuilder.Descending(c => c.Threshold)
+                    : sortBuilder.Ascending(c => c.Threshold),
+                _ => sortOrder.ToLower() == "desc"
+                    ? sortBuilder.Descending(c => c.CategoryId)
+                    : sortBuilder.Ascending(c => c.CategoryId)
+            };
+
+            var categories = _context.Categories
+                .Find(filter)
+                .Sort(sort)
+                .ToList();
+
+            return Ok(categories);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Error retrieving categories", error = ex.Message });
         }
     }
 
     [HttpPost]
     public IActionResult AddCategory([FromBody] Category category)
     {
-        using (MySqlConnection conn = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+        try
         {
-            try
-            {
-                conn.Open();
-                string query = "INSERT INTO category (category_name, threshold) VALUES (@CategoryName, @Threshold)";
+            category.CategoryId = _context.GetNextSequence("category");
 
-                using (MySqlCommand cmd = new MySqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@CategoryName", category.CategoryName);
-                    cmd.Parameters.AddWithValue("@Threshold", category.Threshold);
+            _context.Categories.InsertOne(category);
 
-                    cmd.ExecuteNonQuery();
-                }
-
-                return Ok(new { message = "Category added successfully!" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "Error adding category", error = ex.Message });
-            }
+            return Ok(new { message = "Category added successfully!" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Error adding category", error = ex.Message });
         }
     }
 
     [HttpPut("{id}")]
     public IActionResult UpdateCategory(int id, [FromBody] Category category)
     {
-        using (MySqlConnection conn = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+        try
         {
-            try
-            {
-                conn.Open();
-                string query = "UPDATE category SET category_name = @CategoryName, threshold = @Threshold WHERE category_id = @CategoryId";
+            var filter = Builders<Category>.Filter.Eq(c => c.CategoryId, id);
+            var update = Builders<Category>.Update
+                .Set(c => c.CategoryName, category.CategoryName)
+                .Set(c => c.Threshold, category.Threshold);
 
-                using (MySqlCommand cmd = new MySqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@CategoryId", id);
-                    cmd.Parameters.AddWithValue("@CategoryName", category.CategoryName);
-                    cmd.Parameters.AddWithValue("@Threshold", category.Threshold);
+            var result = _context.Categories.UpdateOne(filter, update);
 
-                    int rowsAffected = cmd.ExecuteNonQuery();
-
-                    if (rowsAffected > 0)
-                        return Ok(new { message = "Category updated successfully!" });
-                    else
-                        return NotFound(new { message = "Category not found" });
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "Error updating category", error = ex.Message });
-            }
+            if (result.ModifiedCount > 0)
+                return Ok(new { message = "Category updated successfully!" });
+            else
+                return NotFound(new { message = "Category not found" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Error updating category", error = ex.Message });
         }
     }
 
     [HttpDelete("{id}")]
     public IActionResult DeleteCategory(int id)
     {
-        using (MySqlConnection conn = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+        try
         {
-            try
-            {
-                conn.Open();
-                string query = "DELETE FROM category WHERE category_id = @CategoryId";
+            var filter = Builders<Category>.Filter.Eq(c => c.CategoryId, id);
+            var result = _context.Categories.DeleteOne(filter);
 
-                using (MySqlCommand cmd = new MySqlCommand(query, conn))
-                {
-                    cmd.Parameters.AddWithValue("@CategoryId", id);
-
-                    int rowsAffected = cmd.ExecuteNonQuery();
-
-                    if (rowsAffected > 0)
-                        return Ok(new { message = "Category deleted successfully!" });
-                    else
-                        return NotFound(new { message = "Category not found" });
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "Error deleting category", error = ex.Message });
-            }
+            if (result.DeletedCount > 0)
+                return Ok(new { message = "Category deleted successfully!" });
+            else
+                return NotFound(new { message = "Category not found" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Error deleting category", error = ex.Message });
         }
     }
 }

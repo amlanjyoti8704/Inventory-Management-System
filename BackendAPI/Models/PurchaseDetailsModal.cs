@@ -1,13 +1,26 @@
 using System;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace BackendAPI.Models
 {
     public class PurchaseDetailsModal
     {
-        public int ItemId { get; set; } // Matches item_id
-        public int OrderId { get; set; } // Matches order_id (Primary Key)
-        public int Quantity { get; set; } // Matches quantity
-        public decimal Price { get; set; } // Matches price (decimal(9,2))
-        public string PurchaseDate { get; set; } // Change type to string if formatted in controller
+        [BsonElement("item_id")]
+        public int ItemId { get; set; }
+
+        [BsonId]
+        [BsonElement("_id")]
+        public int OrderId { get; set; } // Primary Key
+
+        [BsonElement("quantity")]
+        public int Quantity { get; set; }
+
+        [BsonElement("price")]
+        [BsonRepresentation(BsonType.Decimal128)]
+        public decimal Price { get; set; }
+
+        [BsonElement("purchase_date")]
+        public string PurchaseDate { get; set; }
     }
 }

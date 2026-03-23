@@ -18,7 +18,7 @@ function CategoryPage() {
   const fetchCategories = async () => {
     try {
       // const res = await axios.get('https://my-backend-sdbk.onrender.com/api/categories');
-      const res = await axios.get('http://localhost:5007/api/categories');
+      const res = await axios.get(`${import.meta.env.VITE_BACKEND_URI}/api/categories`);
       setCategories(res.data);
     } catch (err) {
       setError('Failed to fetch categories');
@@ -49,7 +49,7 @@ function CategoryPage() {
         //   categoryName: categoryName,
         //   threshold: parseInt(threshold)
         // });
-        await axios.put(`http://localhost:5007/api/categories/${editingId}`, {
+        await axios.put(`${import.meta.env.VITE_BACKEND_URI}/api/categories/${editingId}`, {
           categoryName: categoryName,
           threshold: parseInt(threshold)
         });
@@ -59,7 +59,7 @@ function CategoryPage() {
         //   categoryName: categoryName,
         //   threshold: parseInt(threshold)
         // });
-        await axios.post('http://localhost:5007/api/categories', {
+        await axios.post(`${import.meta.env.VITE_BACKEND_URI}/api/categories`, {
           categoryName: categoryName,
           threshold: parseInt(threshold)
         });
@@ -78,7 +78,7 @@ function CategoryPage() {
     if (!window.confirm('Are you sure you want to delete this category?')) return;
     try {
       // await axios.delete(`https://my-backend-sdbk.onrender.com/api/categories/${id}`);
-      await axios.delete(`http://localhost:5007/api/categories/${id}`);
+      await axios.delete(`${import.meta.env.VITE_BACKEND_URI}/api/categories/${id}`);
       setSuccess('Category deleted successfully!');
       fetchCategories();
     } catch (err) {

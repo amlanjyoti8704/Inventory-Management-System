@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using System.Security.Cryptography;
-using MySqlConnector;
-using System.Data;
+using MongoDB.Driver;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
 using Twilio.Types;
@@ -14,83 +13,57 @@ using MimeKit;
 [ApiController]
 public class UserController : ControllerBase
 {
-    private readonly DbContext _context;
+    private readonly MongoDbContext _context;
     private readonly IConfiguration _configuration;
 
-    public UserController(IConfiguration configuration)
+    public UserController(MongoDbContext context, IConfiguration configuration)
     {
         _configuration = configuration;
-        _context = new DbContext(_configuration);
+        _context = context;
     }
 
     [HttpPost("signup")]
     public IActionResult Signup(User user)
     {
         user.Password = BCrypt.Net.BCrypt.HashPassword(user.Password);
+        user.Id = _context.GetNextSequence("Users");
+        user.Role = string.IsNullOrEmpty(user.Role) ? "user" : user.Role;
+        user.CreatedAt = DateTime.Now;
 
-        using var conn = _context.GetConnection();
-        conn.Open();
+        _context.Users.InsertOne(user);
 
-        var cmd = new MySqlCommand(
-            "INSERT INTO Users (email, username, password, role, createdAt) VALUES (@email, @username, @password, @role, @createdAt)",
-            conn);
-
-        cmd.Parameters.AddWithValue("@email", user.Email);
-        cmd.Parameters.AddWithValue("@username", user.Username);
-        cmd.Parameters.AddWithValue("@password", user.Password);
-        cmd.Parameters.AddWithValue("@role", string.IsNullOrEmpty(user.Role) ? "user" : user.Role);
-        cmd.Parameters.AddWithValue("@createdAt", DateTime.Now);
-
-        cmd.ExecuteNonQuery();
-
-        // Fetch the inserted user (including ID)
-        var getUserCmd = new MySqlCommand("SELECT id, username, email, role FROM Users WHERE email = @Email", conn);
-        getUserCmd.Parameters.AddWithValue("@Email", user.Email);
-
-        using var reader = getUserCmd.ExecuteReader();
-        if (reader.Read())
+        return Ok(new
         {
-            return Ok(new
+            message = "User created",
+            user = new
             {
-                message = "User created",
-                user = new
-                {
-                    id = reader["id"],
-                    username = reader["username"],
-                    email = reader["email"],
-                    role = reader["role"]
-                }
-            });
-        }
-
-        return StatusCode(500, new { message = "User created but failed to retrieve user data" });
+                id = user.Id,
+                username = user.Username,
+                email = user.Email,
+                role = user.Role
+            }
+        });
     }
 
     [HttpPost("login")]
     public IActionResult Login(LoginRequest login)
     {
-        using var conn = _context.GetConnection();
-        conn.Open();
+        var filter = Builders<User>.Filter.Eq(u => u.Email, login.Email);
+        var user = _context.Users.Find(filter).FirstOrDefault();
 
-        var cmd = new MySqlCommand("SELECT * FROM Users WHERE email = @Email", conn);
-        cmd.Parameters.AddWithValue("@Email", login.Email);
-
-        using var reader = cmd.ExecuteReader();
-
-        if (reader.Read())
+        if (user != null)
         {
-            string storedHash = reader["password"].ToString();
-            if (BCrypt.Net.BCrypt.Verify(login.Password, storedHash))
+            if (BCrypt.Net.BCrypt.Verify(login.Password, user.Password))
             {
                 return Ok(new
                 {
                     message = "Login successful",
                     user = new
                     {
-                        id = reader["id"],
-                        username = reader["username"],
-                        email = reader["email"],
-                        role = reader["role"]
+                        id = user.Id,
+                        username = user.Username,
+                        email = user.Email,
+                        role = user.Role
                     }
                 });
             }
@@ -102,41 +75,30 @@ public class UserController : ControllerBase
     [HttpGet]
     public IActionResult GetUsers()
     {
-        var users = new List<User>();
+        var users = _context.Users
+            .Find(Builders<User>.Filter.Empty)
+            .ToList();
 
-        using var conn = _context.GetConnection();
-        conn.Open();
-
-        var cmd = new MySqlCommand("SELECT id, username, email, role FROM Users", conn);
-        using var reader = cmd.ExecuteReader();
-
-        while (reader.Read())
+        var result = users.Select(u => new User
         {
-            users.Add(new User
-            {
-                Id = Convert.ToInt32(reader["id"]),
-                Username = reader["username"].ToString(),
-                Email = reader["email"].ToString(),
-                Role = reader["role"].ToString()
-            });
-        }
+            Id = u.Id,
+            Username = u.Username,
+            Email = u.Email,
+            Role = u.Role
+        }).ToList();
 
-        return Ok(users);
+        return Ok(result);
     }
 
     [HttpPut("update-role")]
     public async Task<IActionResult> UpdateUserRole([FromBody] RoleUpdateRequest request)
     {
-        using var connection = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection"));
-        await connection.OpenAsync();
+        var filter = Builders<User>.Filter.Eq(u => u.Email, request.Email);
+        var update = Builders<User>.Update.Set(u => u.Role, request.Role);
 
-        var query = "UPDATE Users SET role = @Role WHERE email = @Email";
-        using var command = new MySqlCommand(query, connection);
-        command.Parameters.AddWithValue("@Role", request.Role);
-        command.Parameters.AddWithValue("@Email", request.Email);
+        var result = await _context.Users.UpdateOneAsync(filter, update);
 
-        var rowsAffected = await command.ExecuteNonQueryAsync();
-        if (rowsAffected > 0)
+        if (result.ModifiedCount > 0)
             return Ok(new { message = "Role updated successfully" });
         else
             return NotFound(new { message = "User not found" });
@@ -145,81 +107,22 @@ public class UserController : ControllerBase
     [HttpGet("me")]
     public IActionResult GetUserByEmail([FromQuery] string email)
     {
-        using var conn = _context.GetConnection();
-        conn.Open();
+        var filter = Builders<User>.Filter.Eq(u => u.Email, email);
+        var user = _context.Users.Find(filter).FirstOrDefault();
 
-        var cmd = new MySqlCommand("SELECT id, username, email, role FROM Users WHERE email = @Email", conn);
-        cmd.Parameters.AddWithValue("@Email", email);
-
-        using var reader = cmd.ExecuteReader();
-        if (reader.Read())
+        if (user != null)
         {
             return Ok(new
             {
-                id = reader["id"],
-                username = reader["username"],
-                email = reader["email"],
-                role = reader["role"]
+                id = user.Id,
+                username = user.Username,
+                email = user.Email,
+                role = user.Role
             });
         }
 
         return NotFound(new { message = "User not found" });
     }
-
-    // [HttpPost("forgot-password")]
-    // public IActionResult ForgotPassword([FromBody] ForgotPasswordRequest request)
-    // {
-    //     if (string.IsNullOrWhiteSpace(request.Email))
-    //         return BadRequest(new { message = "Email is required" });
-
-    //     var db = new DbContext();
-    //     using var conn = db.GetConnection();
-    //     conn.Open();
-
-    //     // 1. Check if user exists
-    //     var checkCmd = new MySqlCommand("SELECT * FROM Users WHERE Email = @Email", conn);
-    //     checkCmd.Parameters.AddWithValue("@Email", request.Email);
-
-    //     using var reader = checkCmd.ExecuteReader();
-    //     if (!reader.HasRows)
-    //         return NotFound(new { message = "User not found" });
-
-    //     reader.Close();
-
-    //     // 2. Generate secure token
-    //     var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-    //     var expiry = DateTime.UtcNow.AddHours(1);
-
-    //     // 3. Update user with token + expiry
-    //     var updateCmd = new MySqlCommand(
-    //         "UPDATE Users SET ResetToken = @Token, ResetTokenExpiry = @Expiry WHERE Email = @Email", conn);
-    //     updateCmd.Parameters.AddWithValue("@Token", token);
-    //     updateCmd.Parameters.AddWithValue("@Expiry", expiry);
-    //     updateCmd.Parameters.AddWithValue("@Email", request.Email);
-    //     updateCmd.ExecuteNonQuery();
-
-    //     // 4. Simulate sending email
-    //     var resetLink = $"http://localhost:5173/reset-password?token={token}";
-    //     // Console.WriteLine($"Reset password link: {resetLink}");
-
-    //     var email = new MimeMessage();
-    //     email.From.Add(MailboxAddress.Parse("your@email.com"));
-    //     email.To.Add(MailboxAddress.Parse(request.Email));
-    //     email.Subject = "Password Reset Link";
-
-    //     email.Body = new TextPart("plain")
-    //     {
-    //         Text = $"Click the following link to reset your password: {resetLink}"
-    //     };
-
-    //     using var smtp = new SmtpClient();
-    //     smtp.Connect("smtp.gmail.com", 587, MailKit.Security.SecureSocketOptions.StartTls);
-    //     smtp.Authenticate("your@email.com", "your_email_app_password"); // NOT your Gmail password directly
-    //     smtp.Send(email);
-    //     smtp.Disconnect(true);
-
-    //     return Ok(new { message = "Reset password link has been generated." });
-    // }
 
     [HttpPost("forgot-password")]
     public IActionResult ForgotPassword([FromBody] ForgotPasswordRequest request)
@@ -227,37 +130,28 @@ public class UserController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Email))
             return BadRequest(new { message = "Email is required" });
 
-        var db = new DbContext(_configuration);
-        using var conn = db.GetConnection();
-        conn.Open();
-
         // 1. Check if user exists
-        var checkCmd = new MySqlCommand("SELECT * FROM Users WHERE Email = @Email", conn);
-        checkCmd.Parameters.AddWithValue("@Email", request.Email);
+        var filter = Builders<User>.Filter.Eq(u => u.Email, request.Email);
+        var user = _context.Users.Find(filter).FirstOrDefault();
 
-        using var reader = checkCmd.ExecuteReader();
-        if (!reader.HasRows)
+        if (user == null)
             return NotFound(new { message = "User not found" });
-
-        reader.Close();
 
         // 2. Generate secure token
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         var expiry = DateTime.UtcNow.AddHours(1);
 
         // 3. Update user with token + expiry
-        var updateCmd = new MySqlCommand(
-            "UPDATE Users SET ResetToken = @Token, ResetTokenExpiry = @Expiry WHERE Email = @Email", conn);
-        updateCmd.Parameters.AddWithValue("@Token", token);
-        updateCmd.Parameters.AddWithValue("@Expiry", expiry);
-        updateCmd.Parameters.AddWithValue("@Email", request.Email);
-        updateCmd.ExecuteNonQuery();
+        var update = Builders<User>.Update
+            .Set(u => u.ResetToken, token)
+            .Set(u => u.ResetTokenExpiry, expiry);
+        _context.Users.UpdateOne(filter, update);
 
         // 4. Send email using Mailtrap
         var resetLink = $"http://localhost:5173/reset-password?token={token}";
 
         var email = new MimeMessage();
-        email.From.Add(MailboxAddress.Parse("no-reply@example.com")); // This can be any email address
+        email.From.Add(MailboxAddress.Parse("no-reply@example.com"));
         email.To.Add(MailboxAddress.Parse(request.Email));
         email.Subject = "Password Reset Request";
         email.Body = new TextPart("plain")
@@ -268,7 +162,7 @@ public class UserController : ControllerBase
         using var smtp = new SmtpClient();
         smtp.Connect("sandbox.smtp.mailtrap.io", 587, MailKit.Security.SecureSocketOptions.StartTls);
 
-        // ✅ Replace with your actual Mailtrap SMTP credentials
+        // Replace with your actual Mailtrap SMTP credentials
         smtp.Authenticate("d759da824c044c", "9233fb3dc20b92");
 
         smtp.Send(email);
@@ -277,39 +171,37 @@ public class UserController : ControllerBase
         return Ok(new
         {
             message = "Reset password link has been sent to your email.",
-            token = token //remove this line in production
-         });
+            token = token // remove this line in production
+        });
     }
-
 
     [HttpPost("reset-password")]
     public IActionResult ResetPassword([FromBody] ResetPasswordRequest req)
     {
-        var db = new DbContext(_configuration);
-        using var conn = db.GetConnection();
-        conn.Open();
+        var filter = Builders<User>.Filter.And(
+            Builders<User>.Filter.Eq(u => u.ResetToken, req.Token),
+            Builders<User>.Filter.Gt(u => u.ResetTokenExpiry, DateTime.UtcNow)
+        );
 
-        var checkCmd = new MySqlCommand("SELECT * FROM Users WHERE ResetToken = @Token AND ResetTokenExpiry > @Now", conn);
-        checkCmd.Parameters.AddWithValue("@Token", req.Token);
-        checkCmd.Parameters.AddWithValue("@Now", DateTime.UtcNow);
+        var user = _context.Users.Find(filter).FirstOrDefault();
 
-        using var reader = checkCmd.ExecuteReader();
-        if (!reader.HasRows)
+        if (user == null)
             return BadRequest(new { message = "Invalid or expired token." });
-
-        reader.Close();
 
         // Hash password
         string hashedPassword = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
 
-        var updateCmd = new MySqlCommand("UPDATE Users SET Password = @Password, ResetToken = NULL, ResetTokenExpiry = NULL WHERE ResetToken = @Token", conn);
-        updateCmd.Parameters.AddWithValue("@Password", hashedPassword);
-        updateCmd.Parameters.AddWithValue("@Token", req.Token);
-        updateCmd.ExecuteNonQuery();
+        var update = Builders<User>.Update
+            .Set(u => u.Password, hashedPassword)
+            .Set(u => u.ResetToken, null)
+            .Set(u => u.ResetTokenExpiry, null);
+
+        _context.Users.UpdateOne(
+            Builders<User>.Filter.Eq(u => u.ResetToken, req.Token),
+            update);
 
         return Ok(new { message = "Password reset successful." });
     }
-
 
     public class ResetPasswordRequest
     {
@@ -320,34 +212,24 @@ public class UserController : ControllerBase
     [HttpPost("request-password-reset")]
     public IActionResult RequestPasswordReset([FromBody] PhoneRequest request)
     {
-        var db = new DbContext(_configuration);
-        using var conn = db.GetConnection();
-        conn.Open();
+        var filter = Builders<User>.Filter.Eq(u => u.PhoneNumber, request.PhoneNumber);
+        var user = _context.Users.Find(filter).FirstOrDefault();
 
-        var checkCmd = new MySqlCommand("SELECT * FROM Users WHERE PhoneNumber = @Phone", conn);
-        checkCmd.Parameters.AddWithValue("@Phone", request.PhoneNumber);
-
-        using var reader = checkCmd.ExecuteReader();
-        if (!reader.Read())
+        if (user == null)
             return NotFound(new { message = "User not found" });
-
-        reader.Close();
 
         // Generate OTP token
         var token = new Random().Next(100000, 999999).ToString(); // 6-digit code
         var expiry = DateTime.UtcNow.AddMinutes(5);
 
-        var updateCmd = new MySqlCommand("UPDATE Users SET ResetToken = @Token, ResetTokenExpiry = @Expiry WHERE PhoneNumber = @Phone", conn);
-        updateCmd.Parameters.AddWithValue("@Token", token);
-        updateCmd.Parameters.AddWithValue("@Expiry", expiry);
-        updateCmd.Parameters.AddWithValue("@Phone", request.PhoneNumber);
-        updateCmd.ExecuteNonQuery();
+        var update = Builders<User>.Update
+            .Set(u => u.ResetToken, token)
+            .Set(u => u.ResetTokenExpiry, expiry);
+        _context.Users.UpdateOne(filter, update);
 
         // Send SMS using Twilio
         var accountSid = "AC58b121fb266609475e502722eaad7390";
         var authToken = "45c04b1a1ceb4fcb718bb27eb5308b5d";
-        // Replace with your Twilio phone number
-        //But Twilio phone number needed to be bought for $1.15/month so for later purposes
         var twilioPhone = "+1234567890";
 
         TwilioClient.Init(accountSid, authToken);
@@ -355,7 +237,7 @@ public class UserController : ControllerBase
         var phone = request.PhoneNumber;
         if (!phone.StartsWith("+"))
         {
-            phone = "+91" + phone; // Assuming you're only handling Indian numbers
+            phone = "+91" + phone;
         }
 
         var message = MessageResource.Create(
@@ -375,35 +257,35 @@ public class UserController : ControllerBase
     [HttpPost("verify-token-reset")]
     public IActionResult VerifyTokenReset([FromBody] VerifyTokenRequest req)
     {
-        var db = new DbContext(_configuration);
-        using var conn = db.GetConnection();
-        conn.Open();
+        var filter = Builders<User>.Filter.And(
+            Builders<User>.Filter.Eq(u => u.PhoneNumber, req.PhoneNumber),
+            Builders<User>.Filter.Eq(u => u.ResetToken, req.Token),
+            Builders<User>.Filter.Gt(u => u.ResetTokenExpiry, DateTime.UtcNow)
+        );
 
-        var checkCmd = new MySqlCommand("SELECT * FROM Users WHERE PhoneNumber = @Phone AND ResetToken = @Token AND ResetTokenExpiry > @Now", conn);
-        checkCmd.Parameters.AddWithValue("@Phone", req.PhoneNumber);
-        checkCmd.Parameters.AddWithValue("@Token", req.Token);
-        checkCmd.Parameters.AddWithValue("@Now", DateTime.UtcNow);
+        var user = _context.Users.Find(filter).FirstOrDefault();
 
-        using var reader = checkCmd.ExecuteReader();
-        if (!reader.Read())
+        if (user == null)
             return BadRequest(new { message = "Invalid or expired token." });
-
-        reader.Close();
 
         string hashedPassword = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
 
-        var updateCmd = new MySqlCommand("UPDATE Users SET Password = @Password, ResetToken = NULL, ResetTokenExpiry = NULL WHERE PhoneNumber = @Phone", conn);
-        updateCmd.Parameters.AddWithValue("@Password", hashedPassword);
-        updateCmd.Parameters.AddWithValue("@Phone", req.PhoneNumber);
-        updateCmd.ExecuteNonQuery();
+        var update = Builders<User>.Update
+            .Set(u => u.Password, hashedPassword)
+            .Set(u => u.ResetToken, null)
+            .Set(u => u.ResetTokenExpiry, null);
+
+        _context.Users.UpdateOne(
+            Builders<User>.Filter.Eq(u => u.PhoneNumber, req.PhoneNumber),
+            update);
 
         return Ok(new { message = "Password reset successful." });
     }
+
     public class VerifyTokenRequest
     {
         public string PhoneNumber { get; set; }
         public string Token { get; set; }
         public string NewPassword { get; set; }
     }
-
 }

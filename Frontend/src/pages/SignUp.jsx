@@ -32,7 +32,7 @@ function SignUp() {
       //     password: password.trim(),
       //   }),
       // });
-      const response = await fetch("http://localhost:5007/api/user/signup", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URI}/api/user/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

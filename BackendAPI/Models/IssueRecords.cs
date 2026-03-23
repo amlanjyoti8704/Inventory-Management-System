@@ -1,11 +1,34 @@
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+
 public class IssueRecords
 {
-    public int IssueId { get; set; } // Matches issue_id (Primary Key)
-    public string IssuedTo { get; set; } // Matches issued_to
-    public string Department { get; set; } // Matches department
-    public int Quantity { get; set; } // Matches quantity
+    [BsonId]
+    [BsonElement("_id")]
+    public int IssueId { get; set; } // Primary Key
+
+    [BsonElement("issued_to")]
+    public string IssuedTo { get; set; }
+
+    [BsonElement("department")]
+    public string Department { get; set; }
+
+    [BsonElement("quantity")]
+    public int Quantity { get; set; }
+
+    [BsonElement("requested_by")]
     public string requested_by { get; set; }
-    public string Status { get; set; } // Matches status
-    public string ReturnStatus { get; set; } // Matches return_status
-    public DateTime IssueDate { get; set; } // Matches issue_date
+
+    [BsonElement("status")]
+    public string Status { get; set; }
+
+    [BsonElement("return_status")]
+    [BsonIgnoreIfNull]
+    public string ReturnStatus { get; set; }
+
+    [BsonElement("issue_date")]
+    public DateTime IssueDate { get; set; }
+
+    [BsonElement("item_id")]
+    public int ItemId { get; set; }
 }

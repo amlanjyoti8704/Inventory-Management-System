@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
-using MySql.Data.MySqlClient;
+using MongoDB.Driver;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using BackendAPI.Models;
 using System;
+using System.Linq;
 
 namespace BackendAPI.Controllers
 {
@@ -11,44 +12,23 @@ namespace BackendAPI.Controllers
     [Route("api/purchase-details")]
     public class PurchaseDetailsController : ControllerBase
     {
-        private readonly IConfiguration _configuration;
+        private readonly MongoDbContext _context;
 
-        public PurchaseDetailsController(IConfiguration configuration)
+        public PurchaseDetailsController(MongoDbContext context)
         {
-            _configuration = configuration;
+            _context = context;
         }
 
         [HttpGet("{itemId}")]
         public async Task<IActionResult> GetPurchaseDetails(int itemId)
         {
-            var purchaseDetails = new List<PurchaseDetailsModal>();
-            string connectionString = _configuration.GetConnectionString("DefaultConnection");
-
-            using var connection = new MySqlConnection(connectionString);
-            await connection.OpenAsync();
-
-            string query = "SELECT order_id, item_id, quantity, price, purchase_date FROM purchase_details WHERE item_id = @itemId";
-
-            using var command = new MySqlCommand(query, connection);
-            command.Parameters.AddWithValue("@itemId", itemId);
-
-            using var reader = await command.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-            {
-                purchaseDetails.Add(new PurchaseDetailsModal
-                {
-                    OrderId = reader.GetInt32(0),
-                    ItemId = reader.GetInt32(1),
-                    Quantity = reader.GetInt32(2),
-                    Price = reader.GetDecimal(3),
-                    PurchaseDate = reader.GetDateTime(4).ToString("yyyy-MM-dd")
-                });
-            }
+            var filter = Builders<PurchaseDetailsModal>.Filter.Eq(p => p.ItemId, itemId);
+            var purchaseDetails = await _context.PurchaseDetails.Find(filter).ToListAsync();
 
             return Ok(purchaseDetails);
         }
 
-        // ✅ New POST endpoint to insert a new purchase
+        // POST endpoint to insert a new purchase
         [HttpPost("{itemId}")]
         public async Task<IActionResult> AddPurchaseDetails(int itemId, [FromBody] PurchaseDetailsModal newPurchase)
         {
@@ -56,35 +36,27 @@ namespace BackendAPI.Controllers
             {
                 Console.WriteLine($"🟡 Incoming request: itemId={itemId}, quantity={newPurchase.Quantity}, price={newPurchase.Price}, purchaseDate={newPurchase.PurchaseDate}");
 
-                string connectionString = _configuration.GetConnectionString("DefaultConnection");
-
-                using var connection = new MySqlConnection(connectionString);
-                await connection.OpenAsync();
-
-                string query = @"INSERT INTO purchase_details (item_id, quantity, price, purchase_date)
-                         VALUES (@itemId, @quantity, @price, @purchaseDate)";
-
-                using var command = new MySqlCommand(query, connection);
-                command.Parameters.AddWithValue("@itemId", itemId);
-                command.Parameters.AddWithValue("@quantity", newPurchase.Quantity);
-                command.Parameters.AddWithValue("@price", newPurchase.Price);
-
                 // Safely parse the date, or return 400
                 if (!DateTime.TryParse(newPurchase.PurchaseDate, out var parsedDate))
                 {
                     Console.WriteLine("❌ Invalid date format received.");
                     return BadRequest(new { message = "Invalid date format" });
                 }
-                command.Parameters.AddWithValue("@purchaseDate", parsedDate);
 
-                int result = await command.ExecuteNonQueryAsync();
+                var orderId = await _context.GetNextSequenceAsync("purchase_details");
 
-                if (result > 0)
+                var purchase = new PurchaseDetailsModal
                 {
-                    return Ok(new { message = "Purchase added successfully" });
-                }
+                    OrderId = orderId,
+                    ItemId = itemId,
+                    Quantity = newPurchase.Quantity,
+                    Price = newPurchase.Price,
+                    PurchaseDate = parsedDate.ToString("yyyy-MM-dd")
+                };
 
-                return BadRequest(new { message = "Failed to insert purchase" });
+                await _context.PurchaseDetails.InsertOneAsync(purchase);
+
+                return Ok(new { message = "Purchase added successfully" });
             }
             catch (Exception ex)
             {
@@ -101,13 +73,6 @@ namespace BackendAPI.Controllers
                 if (request.OrderIds == null || request.OrderIds.Count == 0)
                     return BadRequest(new { message = "No orderIds provided." });
 
-                string connectionString = _configuration.GetConnectionString("DefaultConnection");
-
-                using var connection = new MySqlConnection(connectionString);
-                await connection.OpenAsync();
-
-                using var transaction = await connection.BeginTransactionAsync();
-
                 try
                 {
                     int totalQuantityToSubtract = 0;
@@ -116,38 +81,32 @@ namespace BackendAPI.Controllers
                     // Step 1: Validate and accumulate total quantity to subtract
                     foreach (var orderId in request.OrderIds)
                     {
-                        string getQuantityQuery = "SELECT quantity FROM purchase_details WHERE order_id = @orderId AND item_id = @itemId";
+                        var purchaseFilter = Builders<PurchaseDetailsModal>.Filter.And(
+                            Builders<PurchaseDetailsModal>.Filter.Eq(p => p.OrderId, orderId),
+                            Builders<PurchaseDetailsModal>.Filter.Eq(p => p.ItemId, request.ItemId)
+                        );
 
-                        using var getCommand = new MySqlCommand(getQuantityQuery, connection, (MySqlTransaction)transaction);
-                        getCommand.Parameters.AddWithValue("@orderId", orderId);
-                        getCommand.Parameters.AddWithValue("@itemId", request.ItemId);
+                        var purchase = await _context.PurchaseDetails.Find(purchaseFilter).FirstOrDefaultAsync();
 
-                        var result = await getCommand.ExecuteScalarAsync();
-
-                        if (result == null)
+                        if (purchase == null)
                             continue;
 
-                        int quantity = Convert.ToInt32(result);
-                        totalQuantityToSubtract += quantity;
-                        orderQuantities[orderId] = quantity;
+                        totalQuantityToSubtract += purchase.Quantity;
+                        orderQuantities[orderId] = purchase.Quantity;
                     }
 
                     // Step 2: Check available stock
-                    string checkQtyQuery = "SELECT quantity FROM consumableItems WHERE item_id = @itemId";
-                    using var checkCommand = new MySqlCommand(checkQtyQuery, connection, (MySqlTransaction)transaction);
-                    checkCommand.Parameters.AddWithValue("@itemId", request.ItemId);
+                    var itemFilter = Builders<ConsumableItems>.Filter.Eq(i => i.ItemId, request.ItemId);
+                    var item = await _context.ConsumableItems.Find(itemFilter).FirstOrDefaultAsync();
 
-                    var currentQtyObj = await checkCommand.ExecuteScalarAsync();
-                    if (currentQtyObj == null)
+                    if (item == null)
                         throw new Exception("Item not found in consumableItems.");
 
-                    int currentQty = Convert.ToInt32(currentQtyObj);
-                    if (totalQuantityToSubtract > currentQty)
+                    if (totalQuantityToSubtract > item.Quantity)
                     {
-                        await transaction.RollbackAsync();
                         return BadRequest(new
                         {
-                            message = $"Cannot delete purchases. Required rollback quantity ({totalQuantityToSubtract}) exceeds current stock ({currentQty})."
+                            message = $"Cannot delete purchases. Required rollback quantity ({totalQuantityToSubtract}) exceeds current stock ({item.Quantity})."
                         });
                     }
 
@@ -157,29 +116,22 @@ namespace BackendAPI.Controllers
                         int orderId = kvp.Key;
                         int quantityToSubtract = kvp.Value;
 
-                        string updateQuery = @"UPDATE consumableItems 
-                                       SET quantity = quantity - @qty 
-                                       WHERE item_id = @itemId";
+                        // Update stock
+                        var stockUpdate = Builders<ConsumableItems>.Update.Inc(i => i.Quantity, -quantityToSubtract);
+                        await _context.ConsumableItems.UpdateOneAsync(itemFilter, stockUpdate);
 
-                        using var updateCommand = new MySqlCommand(updateQuery, connection, (MySqlTransaction)transaction);
-                        updateCommand.Parameters.AddWithValue("@qty", quantityToSubtract);
-                        updateCommand.Parameters.AddWithValue("@itemId", request.ItemId);
-                        await updateCommand.ExecuteNonQueryAsync();
-
-                        string deleteQuery = "DELETE FROM purchase_details WHERE order_id = @orderId AND item_id = @itemId";
-
-                        using var deleteCommand = new MySqlCommand(deleteQuery, connection, (MySqlTransaction)transaction);
-                        deleteCommand.Parameters.AddWithValue("@orderId", orderId);
-                        deleteCommand.Parameters.AddWithValue("@itemId", request.ItemId);
-                        await deleteCommand.ExecuteNonQueryAsync();
+                        // Delete purchase record
+                        var deleteFilter = Builders<PurchaseDetailsModal>.Filter.And(
+                            Builders<PurchaseDetailsModal>.Filter.Eq(p => p.OrderId, orderId),
+                            Builders<PurchaseDetailsModal>.Filter.Eq(p => p.ItemId, request.ItemId)
+                        );
+                        await _context.PurchaseDetails.DeleteOneAsync(deleteFilter);
                     }
 
-                    await transaction.CommitAsync();
                     return Ok(new { message = "Selected purchases deleted and inventory updated." });
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync();
                     Console.WriteLine("🔥 Transaction error: " + ex.Message);
                     return StatusCode(500, new { message = "Transaction failed", error = ex.Message });
                 }
@@ -190,7 +142,5 @@ namespace BackendAPI.Controllers
                 return StatusCode(500, new { message = "Internal server error", error = ex.Message });
             }
         }
-
-
     }
 }

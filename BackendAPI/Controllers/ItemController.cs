@@ -1,188 +1,146 @@
 using Microsoft.AspNetCore.Mvc;
-// using MySql.Data.MySqlClient;
-using MySqlConnector;
-using System.Data;
+using MongoDB.Driver;
 using System.Collections.Generic;
+using System.Linq;
 
 [Route("api/[controller]")]
 [ApiController]
 public class ItemsController : ControllerBase
 {
-    private readonly string _connectionString;
+    private readonly MongoDbContext _context;
 
-    public ItemsController(IConfiguration configuration)
+    public ItemsController(MongoDbContext context)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection");
-    }    // private string connectionString = "server=localhost;user=amlan;password=test1234;database=IT_consumables;";
+        _context = context;
+    }
 
     [HttpGet]
     public IActionResult GetAllItems()
     {
-        var items = new List<dynamic>();
+        var items = _context.ConsumableItems
+            .Find(Builders<ConsumableItems>.Filter.Empty)
+            .ToList();
 
-        using (var connection = new MySqlConnection(_connectionString))
+        var result = items.Select(i => new
         {
-            connection.Open();
-            var query = "SELECT * FROM consumableItems";
-            var cmd = new MySqlCommand(query, connection);
-            var reader = cmd.ExecuteReader();
+            item_id = i.ItemId,
+            name = i.Name,
+            category_id = i.CategoryId,
+            model_no = i.ModelNo,
+            brand = i.Brand,
+            quantity = i.Quantity,
+            storage_loc_l1 = i.Storage_loc_L1,
+            storage_loc_l2 = i.Storage_loc_L2,
+            warranty_expiration = i.WarrantyExpiration.HasValue
+                ? i.WarrantyExpiration.Value.ToString("yyyy-MM-dd")
+                : null
+        }).ToList();
 
-            while (reader.Read())
-            {
-                items.Add(new
-                {
-                    item_id = reader["item_id"],
-                    name = reader["name"],
-                    category_id = reader["category_id"],
-                    model_no = reader["model_no"],
-                    brand = reader["brand"],
-                    quantity = reader["quantity"],
-                    storage_loc_l1 = reader["storage_loc_l1"],
-                    storage_loc_l2 = reader["storage_loc_l2"],
-                    warranty_expiration = reader["warranty_expiration"] == DBNull.Value ? null : ((DateTime)reader["warranty_expiration"]).ToString("yyyy-MM-dd")
-                });
-            }
-        }
-
-        return Ok(items);
+        return Ok(result);
     }
 
     [HttpGet("purchase-details/{item_id}")]
     public IActionResult GetPurchaseDetails(int item_id)
     {
-        var details = new List<dynamic>();
+        var details = _context.PurchaseDetails
+            .Find(Builders<BackendAPI.Models.PurchaseDetailsModal>.Filter.Eq(p => p.ItemId, item_id))
+            .ToList();
 
-        using (var connection = new MySqlConnection(_connectionString))
+        var result = details.Select(d => new
         {
-            connection.Open();
-            var query = "SELECT * FROM purchase_details WHERE item_id = @item_id";
-            var cmd = new MySqlCommand(query, connection);
-            cmd.Parameters.AddWithValue("@item_id", item_id);
-            var reader = cmd.ExecuteReader();
+            order_id = d.OrderId,
+            quantity = d.Quantity,
+            price = d.Price,
+            purchase_date = d.PurchaseDate
+        }).ToList();
 
-            while (reader.Read())
-            {
-                details.Add(new
-                {
-                    order_id = reader["order_id"],
-                    quantity = reader["quantity"],
-                    price = reader["price"],
-                    purchase_date = ((DateTime)reader["purchase_date"]).ToString("yyyy-MM-dd")
-                });
-            }
-        }
-
-        return Ok(details);
+        return Ok(result);
     }
 
     [HttpPost]
     public IActionResult AddItem([FromBody] dynamic item)
     {
-        using (var connection = new MySqlConnection(_connectionString))
+        var newItem = new ConsumableItems
         {
-            connection.Open();
-            var query = @"INSERT INTO consumableItems 
-                (item_id, name, category_id, model_no, brand, quantity, storage_loc_l1, storage_loc_l2, warranty_expiration) 
-                VALUES (@item_id, @name, @category_id, @model_no, @brand, @quantity, @storage_loc_l1, @storage_loc_l2, @warranty_expiration)";
+            ItemId = (int)item.item_id,
+            Name = (string)item.name,
+            CategoryId = (int)item.category_id,
+            ModelNo = (string)item.model_no,
+            Brand = (string)item.brand,
+            Quantity = (int)item.quantity,
+            Storage_loc_L1 = (string)item.storage_loc_l1,
+            Storage_loc_L2 = (string)item.storage_loc_l2,
+            WarrantyExpiration = item.warranty_expiration == null ? null : (DateTime?)item.warranty_expiration
+        };
 
-            var cmd = new MySqlCommand(query, connection);
-            cmd.Parameters.AddWithValue("@item_id", (int)item.item_id);
-            cmd.Parameters.AddWithValue("@name", (string)item.name);
-            cmd.Parameters.AddWithValue("@category_id", (int)item.category_id);
-            cmd.Parameters.AddWithValue("@model_no", (int)item.model_no);
-            cmd.Parameters.AddWithValue("@brand", (string)item.brand);
-            cmd.Parameters.AddWithValue("@quantity", (int)item.quantity);
-            cmd.Parameters.AddWithValue("@storage_loc_l1", (string)item.storage_loc_l1);
-            cmd.Parameters.AddWithValue("@storage_loc_l2", (string)item.storage_loc_l2);
-            cmd.Parameters.AddWithValue("@warranty_expiration", item.warranty_expiration == null ? DBNull.Value : (object)item.warranty_expiration);
-
-            cmd.ExecuteNonQuery();
-        }
+        _context.ConsumableItems.InsertOne(newItem);
 
         return Ok(new { message = "Item added successfully" });
     }
 
-
     [HttpDelete("{item_id}")]
     public IActionResult DeleteItem(int item_id)
     {
-        using var connection = new MySqlConnection(_connectionString);
-        connection.Open();
-        using var transaction = connection.BeginTransaction();
-
         try
         {
-            var cmd1 = new MySqlCommand("DELETE FROM purchase_details WHERE item_id = @item_id", connection, transaction);
-            cmd1.Parameters.AddWithValue("@item_id", item_id);
-            cmd1.ExecuteNonQuery();
+            // Delete associated purchase details first
+            _context.PurchaseDetails.DeleteMany(
+                Builders<BackendAPI.Models.PurchaseDetailsModal>.Filter.Eq(p => p.ItemId, item_id));
 
-            var cmd2 = new MySqlCommand("DELETE FROM consumableItems WHERE item_id = @item_id", connection, transaction);
-            cmd2.Parameters.AddWithValue("@item_id", item_id);
-            int rows = cmd2.ExecuteNonQuery();
+            // Delete the item
+            _context.ConsumableItems.DeleteOne(
+                Builders<ConsumableItems>.Filter.Eq(i => i.ItemId, item_id));
 
-            transaction.Commit();
             return Ok(new { message = "Item deleted with purchase details" });
         }
         catch (Exception ex)
         {
-            transaction.Rollback();
             return StatusCode(500, new { error = "Delete failed", details = ex.Message });
         }
     }
-
 
     [HttpPut("update-item-with-purchase/{item_id}")]
     public IActionResult UpdateItemWithPurchase(int item_id, [FromBody] UpdateItemWithPurchaseRequest req)
     {
         try
         {
-            using var connection = new MySqlConnection(_connectionString);
-            connection.Open();
-
-            // Begin transaction
-            using var transaction = connection.BeginTransaction();
-
             // 1. Update item
-            var updateItemQuery = @"UPDATE consumableItems SET 
-            name = @name,
-            category_id = @category_id,
-            model_no = @model_no,
-            brand = @brand,
-            quantity = @quantity,
-            storage_loc_l1 = @storage_loc_l1,
-            storage_loc_l2 = @storage_loc_l2,
-            warranty_expiration = @warranty_expiration
-        WHERE item_id = @item_id";
+            var itemFilter = Builders<ConsumableItems>.Filter.Eq(i => i.ItemId, item_id);
+            var itemUpdate = Builders<ConsumableItems>.Update
+                .Set(i => i.Name, req.Name)
+                .Set(i => i.CategoryId, req.Category_Id)
+                .Set(i => i.ModelNo, req.Model_No)
+                .Set(i => i.Brand, req.Brand)
+                .Set(i => i.Quantity, req.Quantity)
+                .Set(i => i.Storage_loc_L1, req.Storage_Loc_L1)
+                .Set(i => i.Storage_loc_L2, req.Storage_Loc_L2)
+                .Set(i => i.WarrantyExpiration, req.Warranty_Expiration);
 
-            using var cmd1 = new MySqlCommand(updateItemQuery, connection, transaction);
-            cmd1.Parameters.AddWithValue("@name", req.Name);
-            cmd1.Parameters.AddWithValue("@category_id", req.Category_Id);
-            cmd1.Parameters.AddWithValue("@model_no", req.Model_No);
-            cmd1.Parameters.AddWithValue("@brand", req.Brand);
-            cmd1.Parameters.AddWithValue("@quantity", req.Quantity);
-            cmd1.Parameters.AddWithValue("@storage_loc_l1", req.Storage_Loc_L1);
-            cmd1.Parameters.AddWithValue("@storage_loc_l2", req.Storage_Loc_L2);
-            cmd1.Parameters.AddWithValue("@warranty_expiration", req.Warranty_Expiration ?? (object)DBNull.Value);
-            cmd1.Parameters.AddWithValue("@item_id", item_id);
-            cmd1.ExecuteNonQuery();
+            _context.ConsumableItems.UpdateOne(itemFilter, itemUpdate);
 
-            // 2. Update latest purchase_details row (if exists)
+            // 2. Update latest purchase_details row (if purchase data provided)
             if (req.Purchase_Price != null && req.Purchase_Quantity != null && req.Purchase_Date != null)
             {
-                var updatePurchaseQuery = @"UPDATE purchase_details 
-                SET price = @price, quantity = @purchase_quantity, purchase_date = @purchase_date 
-                WHERE item_id = @item_id 
-                ORDER BY purchase_id DESC LIMIT 1";
+                var purchaseFilter = Builders<BackendAPI.Models.PurchaseDetailsModal>.Filter.Eq(p => p.ItemId, item_id);
+                var latestPurchase = _context.PurchaseDetails
+                    .Find(purchaseFilter)
+                    .SortByDescending(p => p.OrderId)
+                    .Limit(1)
+                    .FirstOrDefault();
 
-                using var cmd2 = new MySqlCommand(updatePurchaseQuery, connection, transaction);
-                cmd2.Parameters.AddWithValue("@price", req.Purchase_Price);
-                cmd2.Parameters.AddWithValue("@purchase_quantity", req.Purchase_Quantity);
-                cmd2.Parameters.AddWithValue("@purchase_date", req.Purchase_Date);
-                cmd2.Parameters.AddWithValue("@item_id", item_id);
-                cmd2.ExecuteNonQuery();
+                if (latestPurchase != null)
+                {
+                    var purchaseUpdate = Builders<BackendAPI.Models.PurchaseDetailsModal>.Update
+                        .Set(p => p.Price, req.Purchase_Price.Value)
+                        .Set(p => p.Quantity, req.Purchase_Quantity.Value)
+                        .Set(p => p.PurchaseDate, req.Purchase_Date.Value.ToString("yyyy-MM-dd"));
+
+                    _context.PurchaseDetails.UpdateOne(
+                        Builders<BackendAPI.Models.PurchaseDetailsModal>.Filter.Eq(p => p.OrderId, latestPurchase.OrderId),
+                        purchaseUpdate);
+                }
             }
 
-            transaction.Commit();
             return Ok(new { message = "Item and purchase updated successfully" });
         }
         catch (Exception ex)
@@ -191,96 +149,106 @@ public class ItemsController : ControllerBase
         }
     }
 
-
     [HttpPost("items-with-purchase")]
     public IActionResult AddItemWithPurchase([FromBody] ItemWithPurchaseRequest request)
     {
-        using var connection = new MySqlConnection(_connectionString);
-        connection.Open();
-
-        using var transaction = connection.BeginTransaction();
-
         try
         {
-            // Insert item
-            var insertItemCmd = new MySqlCommand(
-                @"INSERT INTO consumableItems 
-                    (name, category_id, model_no, brand, storage_loc_l1, storage_loc_l2, warranty_expiration) 
-                VALUES 
-                    (@name, @category_id, @model_no, @brand, @storage_loc_l1, @storage_loc_l2, @warranty_expiration);
-                SELECT LAST_INSERT_ID();", connection, transaction);
+            // Generate auto-increment ID for the item
+            var itemId = _context.GetNextSequence("consumableItems");
 
-            insertItemCmd.Parameters.AddWithValue("@name", request.Item.Name);
-            insertItemCmd.Parameters.AddWithValue("@category_id", request.Item.CategoryId);
-            insertItemCmd.Parameters.AddWithValue("@model_no", request.Item.ModelNo);
-            insertItemCmd.Parameters.AddWithValue("@brand", request.Item.Brand);
-            // insertItemCmd.Parameters.AddWithValue("@quantity", request.Item.Quantity);
-            insertItemCmd.Parameters.AddWithValue("@storage_loc_l1", request.Item.StorageLocL1);
-            insertItemCmd.Parameters.AddWithValue("@storage_loc_l2", request.Item.StorageLocL2);
-            insertItemCmd.Parameters.AddWithValue("@warranty_expiration", request.Item.WarrantyExpiration == null ? DBNull.Value : (object)request.Item.WarrantyExpiration);
+            var newItem = new ConsumableItems
+            {
+                ItemId = itemId,
+                Name = request.Item.Name,
+                CategoryId = request.Item.CategoryId,
+                ModelNo = request.Item.ModelNo,
+                Brand = request.Item.Brand,
+                Quantity = 0, // quantity handled via purchase
+                Storage_loc_L1 = request.Item.StorageLocL1,
+                Storage_loc_L2 = request.Item.StorageLocL2,
+                WarrantyExpiration = request.Item.WarrantyExpiration == default ? null : request.Item.WarrantyExpiration
+            };
 
-            var itemId = Convert.ToInt32(insertItemCmd.ExecuteScalar());
+            _context.ConsumableItems.InsertOne(newItem);
 
             // Insert purchase detail
-            var insertPurchaseCmd = new MySqlCommand(
-                @"INSERT INTO purchase_details 
-                    (item_id, quantity, price, purchase_date) 
-                VALUES 
-                    (@item_id, @quantity, @price, @purchase_date);", connection, transaction);
+            var orderId = _context.GetNextSequence("purchase_details");
+            var purchase = new BackendAPI.Models.PurchaseDetailsModal
+            {
+                OrderId = orderId,
+                ItemId = itemId,
+                Quantity = request.Purchase.Quantity,
+                Price = request.Purchase.Price,
+                PurchaseDate = request.Purchase.PurchaseDate.ToString("yyyy-MM-dd")
+            };
 
-            insertPurchaseCmd.Parameters.AddWithValue("@item_id", itemId);
-            insertPurchaseCmd.Parameters.AddWithValue("@quantity", request.Purchase.Quantity);
-            insertPurchaseCmd.Parameters.AddWithValue("@price", request.Purchase.Price);
-            insertPurchaseCmd.Parameters.AddWithValue("@purchase_date", request.Purchase.PurchaseDate);
+            _context.PurchaseDetails.InsertOne(purchase);
 
-            insertPurchaseCmd.ExecuteNonQuery();
-
-            transaction.Commit();
             return Ok(new { message = "Item and purchase details added successfully." });
         }
         catch (Exception ex)
         {
-            transaction.Rollback();
             return StatusCode(500, new { message = "Error inserting item and purchase details", error = ex.Message });
         }
     }
 
-    
     [HttpGet("items-with-purchase")]
     public IActionResult GetItemsWithPurchase()
     {
-        var results = new List<dynamic>();
+        var items = _context.ConsumableItems
+            .Find(Builders<ConsumableItems>.Filter.Empty)
+            .ToList();
 
-        using (var connection = new MySqlConnection(_connectionString))
+        // Get all purchase details
+        var allPurchases = _context.PurchaseDetails
+            .Find(Builders<BackendAPI.Models.PurchaseDetailsModal>.Filter.Empty)
+            .ToList()
+            .GroupBy(p => p.ItemId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var results = new List<object>();
+
+        foreach (var item in items)
         {
-            connection.Open();
-            var query = @"
-                SELECT 
-                    ci.item_id, ci.name, ci.category_id, ci.model_no, ci.brand, ci.quantity AS item_quantity, 
-                    ci.storage_loc_l1, ci.storage_loc_l2, ci.warranty_expiration,
-                    pd.purchase_date, pd.quantity AS purchase_quantity, pd.price
-                FROM consumableItems ci
-                LEFT JOIN purchase_details pd ON ci.item_id = pd.item_id";
-
-            using var cmd = new MySqlCommand(query, connection);
-            using var reader = cmd.ExecuteReader();
-
-            while (reader.Read())
+            if (allPurchases.ContainsKey(item.ItemId))
             {
+                foreach (var pd in allPurchases[item.ItemId])
+                {
+                    results.Add(new
+                    {
+                        item_id = item.ItemId,
+                        name = item.Name,
+                        category_id = item.CategoryId,
+                        model_no = item.ModelNo,
+                        brand = item.Brand,
+                        quantity = (int?)item.Quantity,
+                        storage_loc_l1 = item.Storage_loc_L1,
+                        storage_loc_l2 = item.Storage_loc_L2,
+                        warranty_expiration = item.WarrantyExpiration?.ToString("yyyy-MM-dd"),
+                        purchase_price = (decimal?)pd.Price,
+                        purchase_quantity = (int?)pd.Quantity,
+                        purchase_date = pd.PurchaseDate
+                    });
+                }
+            }
+            else
+            {
+                // Item with no purchase details (LEFT JOIN behavior)
                 results.Add(new
                 {
-                    item_id = reader["item_id"],
-                    name = reader["name"],
-                    category_id = reader["category_id"],
-                    model_no = reader["model_no"],
-                    brand = reader["brand"],
-                    quantity = reader["item_quantity"] == DBNull.Value ? (int?)null : Convert.ToInt32(reader["item_quantity"]),
-                    storage_loc_l1 = reader["storage_loc_l1"],
-                    storage_loc_l2 = reader["storage_loc_l2"],
-                    warranty_expiration = reader["warranty_expiration"] == DBNull.Value ? null : ((DateTime)reader["warranty_expiration"]).ToString("yyyy-MM-dd"),
-                    purchase_price = reader["price"] == DBNull.Value ? (decimal?)null : Convert.ToDecimal(reader["price"]),
-                    purchase_quantity = reader["purchase_quantity"] == DBNull.Value ? (int?)null : Convert.ToInt32(reader["purchase_quantity"]),
-                    purchase_date = reader["purchase_date"] == DBNull.Value ? null : ((DateTime)reader["purchase_date"]).ToString("yyyy-MM-dd")
+                    item_id = item.ItemId,
+                    name = item.Name,
+                    category_id = item.CategoryId,
+                    model_no = item.ModelNo,
+                    brand = item.Brand,
+                    quantity = (int?)item.Quantity,
+                    storage_loc_l1 = item.Storage_loc_L1,
+                    storage_loc_l2 = item.Storage_loc_L2,
+                    warranty_expiration = item.WarrantyExpiration?.ToString("yyyy-MM-dd"),
+                    purchase_price = (decimal?)null,
+                    purchase_quantity = (int?)null,
+                    purchase_date = (string?)null
                 });
             }
         }

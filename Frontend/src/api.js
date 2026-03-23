@@ -1,7 +1,7 @@
 // src/api.js
 import axios from "axios";
 
-const BASE_URL = "http://localhost:5007/api/user";
+const BASE_URL = `${import.meta.env.VITE_BACKEND_URI}/api/user`;
 
 export const signupUser = async (userData) => {
   try {

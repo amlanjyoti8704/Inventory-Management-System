@@ -1,63 +1,58 @@
 using Microsoft.AspNetCore.Mvc;
-// using MySql.Data.MySqlClient;
-using MySqlConnector;
-using System.Data;
+using MongoDB.Driver;
 using System.Collections.Generic;
+using System.Linq;
 
 [Route("api/[controller]")]
 [ApiController]
 public class IssueController : ControllerBase
 {
-    private readonly IConfiguration _config;
+    private readonly MongoDbContext _context;
 
-    public IssueController(IConfiguration config)
+    public IssueController(MongoDbContext context)
     {
-        _config = config;
-    }
-
-    private MySqlConnection GetConnection()
-    {
-        return new MySqlConnection(_config.GetConnectionString("DefaultConnection"));
+        _context = context;
     }
 
     [HttpGet("items")]
     public IActionResult GetItems()
     {
-        var items = new List<object>();
-        using var conn = GetConnection();
-        conn.Open();
-        var cmd = new MySqlCommand("SELECT item_id, name AS item_name, quantity AS stock FROM consumableItems", conn);
-        using var reader = cmd.ExecuteReader();
-        while (reader.Read())
+        var items = _context.ConsumableItems
+            .Find(Builders<ConsumableItems>.Filter.Empty)
+            .ToList();
+
+        var result = items.Select(i => new
         {
-            items.Add(new
-            {
-                item_id = reader["item_id"],
-                item_name = reader["item_name"],
-                stock = reader["stock"]
-            });
-        }
-        return Ok(items);
+            item_id = i.ItemId,
+            item_name = i.Name,
+            stock = i.Quantity
+        }).ToList();
+
+        return Ok(result);
     }
 
     // POST: Create a new issue request (status = 'pending'), no stock change here!
     [HttpPost]
     public IActionResult CreateIssueRequest([FromBody] IssueRequest request)
     {
-        using var conn = GetConnection();
-        conn.Open();
         try
         {
-            var insertCmd = new MySqlCommand(@"
-                INSERT INTO issue_records 
-                (issued_to, department, quantity, item_id, issue_date, status, requested_by) 
-                VALUES (@issued_to, @department, @quantity, @item_id, NOW(), 'pending', @requested_by);", conn);
-            insertCmd.Parameters.AddWithValue("@issued_to", request.issued_to);
-            insertCmd.Parameters.AddWithValue("@department", request.department);
-            insertCmd.Parameters.AddWithValue("@quantity", request.quantity);
-            insertCmd.Parameters.AddWithValue("@item_id", request.item_id);
-            insertCmd.Parameters.AddWithValue("@requested_by", request.requested_by ?? "user");
-            insertCmd.ExecuteNonQuery();
+            var issueId = _context.GetNextSequence("issue_records");
+
+            var issue = new IssueRecords
+            {
+                IssueId = issueId,
+                IssuedTo = request.issued_to,
+                Department = request.department,
+                Quantity = request.quantity,
+                ItemId = request.item_id,
+                IssueDate = DateTime.Now,
+                Status = "pending",
+                requested_by = request.requested_by ?? "user",
+                ReturnStatus = "none"
+            };
+
+            _context.IssueRecords.InsertOne(issue);
 
             return Ok(new { message = "Request submitted successfully" });
         }
@@ -70,59 +65,52 @@ public class IssueController : ControllerBase
     [HttpGet]
     public IActionResult GetIssuedItems([FromQuery] string? requested_by)
     {
-        var issues = new List<object>();
-        using var conn = GetConnection();
-        conn.Open();
-
-        string query = @"
-            SELECT ir.issue_id, ci.name AS item_name, ir.issued_to, ir.department, ir.quantity,
-                   ir.issue_date, ir.status, ir.requested_by, ir.return_status
-            FROM issue_records ir
-            JOIN consumableItems ci ON ir.item_id = ci.item_id";
+        var filterBuilder = Builders<IssueRecords>.Filter;
+        var filter = filterBuilder.Empty;
 
         if (!string.IsNullOrEmpty(requested_by))
-            query += " WHERE ir.requested_by = @requested_by";
+            filter = filterBuilder.Eq(i => i.requested_by, requested_by);
 
-        using var cmd = new MySqlCommand(query, conn);
-        if (!string.IsNullOrEmpty(requested_by))
-            cmd.Parameters.AddWithValue("@requested_by", requested_by);
+        var issues = _context.IssueRecords
+            .Find(filter)
+            .ToList();
 
-        using var reader = cmd.ExecuteReader();
-        while (reader.Read())
+        // Get item names for the item_ids
+        var itemIds = issues.Select(i => i.ItemId).Distinct().ToList();
+        var items = _context.ConsumableItems
+            .Find(Builders<ConsumableItems>.Filter.In(i => i.ItemId, itemIds))
+            .ToList()
+            .ToDictionary(i => i.ItemId, i => i.Name);
+
+        var result = issues.Select(i => new
         {
-            issues.Add(new
-            {
-                issue_id = reader["issue_id"],
-                item_name = reader["item_name"],
-                issued_to = reader["issued_to"],
-                department = reader["department"],
-                quantity = reader["quantity"],
-                issue_date = reader["issue_date"],
-                status = reader["status"],
-                requested_by = reader["requested_by"],
-                return_status = reader["return_status"]
-            });
-        }
-        return Ok(issues);
+            issue_id = i.IssueId,
+            item_name = items.ContainsKey(i.ItemId) ? items[i.ItemId] : "Unknown",
+            issued_to = i.IssuedTo,
+            department = i.Department,
+            quantity = i.Quantity,
+            issue_date = i.IssueDate,
+            status = i.Status,
+            requested_by = i.requested_by,
+            return_status = i.ReturnStatus
+        }).ToList();
+
+        return Ok(result);
     }
 
     [HttpPut("decline/{id}")]
     public IActionResult DeclineIssue(int id)
     {
-        using var conn = GetConnection();
-        conn.Open();
         try
         {
-            var checkCmd = new MySqlCommand("SELECT COUNT(*) FROM issue_records WHERE issue_id = @id", conn);
-            checkCmd.Parameters.AddWithValue("@id", id);
-            var exists = Convert.ToInt32(checkCmd.ExecuteScalar()) > 0;
+            var filter = Builders<IssueRecords>.Filter.Eq(i => i.IssueId, id);
+            var exists = _context.IssueRecords.CountDocuments(filter) > 0;
 
             if (!exists)
                 return NotFound(new { error = "Request not found." });
 
-            var updateStatus = new MySqlCommand("UPDATE issue_records SET status = 'declined' WHERE issue_id = @id", conn);
-            updateStatus.Parameters.AddWithValue("@id", id);
-            updateStatus.ExecuteNonQuery();
+            var update = Builders<IssueRecords>.Update.Set(i => i.Status, "declined");
+            _context.IssueRecords.UpdateOne(filter, update);
 
             return Ok(new { message = "Request declined." });
         }
@@ -136,81 +124,56 @@ public class IssueController : ControllerBase
     [HttpPut("approve/{id}")]
     public IActionResult ApproveIssue(int id)
     {
-        using var conn = GetConnection();
-        conn.Open();
-
-        using var transaction = conn.BeginTransaction(); // Start transaction
         try
         {
             // Step 1: Get item_id and quantity for the given issue
-            var getCmd = new MySqlCommand("SELECT item_id, quantity FROM issue_records WHERE issue_id = @id AND status = 'pending'", conn, transaction);
-            getCmd.Parameters.AddWithValue("@id", id);
+            var issueFilter = Builders<IssueRecords>.Filter.And(
+                Builders<IssueRecords>.Filter.Eq(i => i.IssueId, id),
+                Builders<IssueRecords>.Filter.Eq(i => i.Status, "pending")
+            );
 
-            int itemId = 0;
-            int issueQty = 0;
-            using (var reader = getCmd.ExecuteReader())
-            {
-                if (!reader.Read())
-                    return NotFound(new { error = "Request not found or already processed." });
+            var issue = _context.IssueRecords.Find(issueFilter).FirstOrDefault();
 
-                itemId = Convert.ToInt32(reader["item_id"]);
-                issueQty = Convert.ToInt32(reader["quantity"]);
-            }
+            if (issue == null)
+                return NotFound(new { error = "Request not found or already processed." });
 
             // Step 2: Check stock
-            var checkStockCmd = new MySqlCommand("SELECT quantity FROM consumableItems WHERE item_id = @item_id", conn, transaction);
-            checkStockCmd.Parameters.AddWithValue("@item_id", itemId);
-            var currentStock = Convert.ToInt32(checkStockCmd.ExecuteScalar());
+            var itemFilter = Builders<ConsumableItems>.Filter.Eq(i => i.ItemId, issue.ItemId);
+            var item = _context.ConsumableItems.Find(itemFilter).FirstOrDefault();
 
-            if (currentStock < issueQty)
-            {
-                transaction.Rollback();
+            if (item == null || item.Quantity < issue.Quantity)
                 return BadRequest(new { error = "Not enough stock." });
-            }
 
             // Step 3: Deduct stock
-            var updateStockCmd = new MySqlCommand("UPDATE consumableItems SET quantity = quantity - @qty WHERE item_id = @item_id", conn, transaction);
-            updateStockCmd.Parameters.AddWithValue("@qty", issueQty);
-            updateStockCmd.Parameters.AddWithValue("@item_id", itemId);
-            updateStockCmd.ExecuteNonQuery();
+            var stockUpdate = Builders<ConsumableItems>.Update.Inc(i => i.Quantity, -issue.Quantity);
+            _context.ConsumableItems.UpdateOne(itemFilter, stockUpdate);
 
             // Step 4: Update issue status
-            var updateStatusCmd = new MySqlCommand("UPDATE issue_records SET status = 'approved' WHERE issue_id = @id", conn, transaction);
-            updateStatusCmd.Parameters.AddWithValue("@id", id);
-            updateStatusCmd.ExecuteNonQuery();
+            var statusUpdate = Builders<IssueRecords>.Update.Set(i => i.Status, "approved");
+            _context.IssueRecords.UpdateOne(
+                Builders<IssueRecords>.Filter.Eq(i => i.IssueId, id),
+                statusUpdate);
 
-            transaction.Commit();
             return Ok(new { message = "Request approved and stock updated." });
         }
         catch (Exception ex)
         {
-            transaction.Rollback();
             return StatusCode(500, new { error = ex.Message });
         }
     }
-
 
     [HttpDelete("{id}")]
     public IActionResult DeleteIssueRecord(int id)
     {
         try
         {
-            using var conn = GetConnection();
-            conn.Open();
+            var filter = Builders<IssueRecords>.Filter.Eq(i => i.IssueId, id);
+            var result = _context.IssueRecords.DeleteOne(filter);
 
-            string query = "DELETE FROM issue_records WHERE issue_id = @id";
-            using var cmd = new MySqlCommand(query, conn);
-            cmd.Parameters.AddWithValue("@id", id);
-            int rowsAffected = cmd.ExecuteNonQuery();
-
-            if (rowsAffected > 0)
-            {
+            if (result.DeletedCount > 0)
                 return Ok(new { message = "Issue record deleted successfully." });
-            }
             else
-            {
                 return NotFound(new { error = "Issue record not found." });
-            }
         }
         catch (Exception ex)
         {
@@ -221,15 +184,17 @@ public class IssueController : ControllerBase
     [HttpPut("request-return/{id}")]
     public IActionResult RequestReturn(int id)
     {
-        using var conn = GetConnection();
-        conn.Open();
         try
         {
-            var updateCmd = new MySqlCommand("UPDATE issue_records SET return_status = 'requested' WHERE issue_id = @id AND status = 'approved'", conn);
-            updateCmd.Parameters.AddWithValue("@id", id);
-            int affected = updateCmd.ExecuteNonQuery();
+            var filter = Builders<IssueRecords>.Filter.And(
+                Builders<IssueRecords>.Filter.Eq(i => i.IssueId, id),
+                Builders<IssueRecords>.Filter.Eq(i => i.Status, "approved")
+            );
 
-            if (affected == 0)
+            var update = Builders<IssueRecords>.Update.Set(i => i.ReturnStatus, "requested");
+            var result = _context.IssueRecords.UpdateOne(filter, update);
+
+            if (result.ModifiedCount == 0)
                 return BadRequest(new { error = "Return request failed. Either invalid ID or not in approved state." });
 
             return Ok(new { message = "Return request sent to admin." });
@@ -243,69 +208,54 @@ public class IssueController : ControllerBase
     [HttpPut("approve-return/{id}")]
     public IActionResult ApproveReturn(int id)
     {
-        using var conn = GetConnection();
-        conn.Open();
-        using var transaction = conn.BeginTransaction(); // Start the transaction
-
         try
         {
-            // Step 1: Get item_id and quantity from issue_records
-            var selectCmd = new MySqlCommand(@"
-            SELECT item_id, quantity 
-            FROM issue_records 
-            WHERE issue_id = @id AND status = 'approved' AND return_status = 'requested';", conn, transaction);
-            selectCmd.Parameters.AddWithValue("@id", id);
+            // Step 1: Get the issue record
+            var issueFilter = Builders<IssueRecords>.Filter.And(
+                Builders<IssueRecords>.Filter.Eq(i => i.IssueId, id),
+                Builders<IssueRecords>.Filter.Eq(i => i.Status, "approved"),
+                Builders<IssueRecords>.Filter.Eq(i => i.ReturnStatus, "requested")
+            );
 
-            int itemId, quantity;
-            using (var reader = selectCmd.ExecuteReader())
-            {
-                if (!reader.Read())
-                    return NotFound(new { error = "Record not found or already returned." });
+            var issue = _context.IssueRecords.Find(issueFilter).FirstOrDefault();
 
-                itemId = Convert.ToInt32(reader["item_id"]);
-                quantity = Convert.ToInt32(reader["quantity"]);
-            }
+            if (issue == null)
+                return NotFound(new { error = "Record not found or already returned." });
 
-            // Step 2: Update return_status in issue_records
-            var updateReturnCmd = new MySqlCommand(@"
-            UPDATE issue_records 
-            SET return_status = 'approved' 
-            WHERE issue_id = @id;", conn, transaction);
-            updateReturnCmd.Parameters.AddWithValue("@id", id);
-            updateReturnCmd.ExecuteNonQuery();
+            // Step 2: Update return_status
+            var returnUpdate = Builders<IssueRecords>.Update.Set(i => i.ReturnStatus, "approved");
+            _context.IssueRecords.UpdateOne(
+                Builders<IssueRecords>.Filter.Eq(i => i.IssueId, id),
+                returnUpdate);
 
             // Step 3: Update stock in consumableItems
-            var updateStockCmd = new MySqlCommand(@"
-            UPDATE consumableItems 
-            SET quantity = quantity + @qty 
-            WHERE item_id = @item_id;", conn, transaction);
-            updateStockCmd.Parameters.AddWithValue("@qty", quantity);
-            updateStockCmd.Parameters.AddWithValue("@item_id", itemId);
-            updateStockCmd.ExecuteNonQuery();
+            var stockUpdate = Builders<ConsumableItems>.Update.Inc(i => i.Quantity, issue.Quantity);
+            _context.ConsumableItems.UpdateOne(
+                Builders<ConsumableItems>.Filter.Eq(i => i.ItemId, issue.ItemId),
+                stockUpdate);
 
-            transaction.Commit();
             return Ok(new { message = "Return approved and stock updated." });
         }
         catch (Exception ex)
         {
-            transaction.Rollback();
             return StatusCode(500, new { error = ex.Message });
         }
     }
 
-
     [HttpPut("reject-return/{id}")]
     public IActionResult RejectReturn(int id)
     {
-        using var conn = GetConnection();
-        conn.Open();
         try
         {
-            var updateCmd = new MySqlCommand("UPDATE issue_records SET return_status = 'rejected' WHERE issue_id = @id AND return_status = 'requested'", conn);
-            updateCmd.Parameters.AddWithValue("@id", id);
-            int affected = updateCmd.ExecuteNonQuery();
+            var filter = Builders<IssueRecords>.Filter.And(
+                Builders<IssueRecords>.Filter.Eq(i => i.IssueId, id),
+                Builders<IssueRecords>.Filter.Eq(i => i.ReturnStatus, "requested")
+            );
 
-            if (affected == 0)
+            var update = Builders<IssueRecords>.Update.Set(i => i.ReturnStatus, "rejected");
+            var result = _context.IssueRecords.UpdateOne(filter, update);
+
+            if (result.ModifiedCount == 0)
                 return BadRequest(new { error = "Reject failed. Invalid request or not in 'requested' state." });
 
             return Ok(new { message = "Return request rejected." });
@@ -319,40 +269,20 @@ public class IssueController : ControllerBase
     [HttpGet("pending-requests")]
     public IActionResult GetPendingRequests()
     {
-        List<IssueRecords> pendingIssues = new List<IssueRecords>();
+        var filter = Builders<IssueRecords>.Filter.Or(
+            Builders<IssueRecords>.Filter.In(i => i.Status, new[] { "pending", "requested" }),
+            Builders<IssueRecords>.Filter.Eq(i => i.ReturnStatus, "requested")
+        );
 
-        var db = new DbContext(_config);
-        using var conn = db.GetConnection();
-        conn.Open();
-
-        string query = @"SELECT * FROM issue_records 
-                WHERE status IN ('pending', 'requested') 
-                OR LOWER(TRIM(return_status)) = 'requested'";
-
-        using var cmd = new MySqlCommand(query, conn);
-        using var reader = cmd.ExecuteReader();
-
-        while (reader.Read())
-        {
-            pendingIssues.Add(new IssueRecords
-            {
-                IssueId = Convert.ToInt32(reader["issue_id"]),
-                IssuedTo = reader["issued_to"].ToString(),
-                Department = reader["department"].ToString(),
-                Quantity = Convert.ToInt32(reader["quantity"]),
-                requested_by = reader["requested_by"].ToString(),
-                Status = reader["status"].ToString(),
-                ReturnStatus = reader["return_status"] == DBNull.Value ? null : reader["return_status"].ToString(),                IssueDate = Convert.ToDateTime(reader["issue_date"])
-            });
-        }
+        var pendingIssues = _context.IssueRecords
+            .Find(filter)
+            .ToList();
 
         return Ok(pendingIssues);
     }
-
-
 }
 
-// ✅ Model
+// Model (kept in-file as in original)
 public class IssueRequest
 {
     public int item_id { get; set; }
