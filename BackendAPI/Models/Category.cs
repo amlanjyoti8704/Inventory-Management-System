@@ -1,15 +1,12 @@
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-
-public class Category
+namespace BackendAPI.Models
 {
-    [BsonId]
-    [BsonElement("_id")]
-    public int CategoryId { get; set; } // Primary Key
-
-    [BsonElement("category_name")]
-    public string CategoryName { get; set; }
-
-    [BsonElement("threshold")]
-    public int Threshold { get; set; }
+    /// <summary>
+    /// Maps to the "category" table in PostgreSQL.
+    /// </summary>
+    public class Category
+    {
+        public int CategoryId { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+        public int Threshold { get; set; }
+    }
 }

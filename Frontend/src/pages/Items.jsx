@@ -170,13 +170,13 @@ const handleNewPurchaseSubmit = async (itemId) => {
 
     const payload = {
       Name: newItem.name,
-      CategoryId: newItem.category_id,
+      CategoryId: parseInt(newItem.category_id) || 0,
       ModelNo: newItem.model_no,
       Brand: newItem.brand,
-      Quantity: newItem.quantity,
+      Quantity: parseInt(newItem.quantity) || 0,
       StorageLocL1: newItem.storage_loc_l1,
       StorageLocL2: newItem.storage_loc_l2,
-      WarrentyExpiration: newItem.warrenty_expiration,
+      WarrantyExpiration: newItem.warrenty_expiration || null,
     };
 
     if (newItem.item_id) {
@@ -193,8 +193,8 @@ const handleNewPurchaseSubmit = async (itemId) => {
       const fullPayload = {
         item: payload,
         purchase: {
-          Quantity: newItem.purchase_quantity,
-          Price: newItem.price,
+          Quantity: parseInt(newItem.purchase_quantity) || 0,
+          Price: parseFloat(newItem.price) || 0,
           PurchaseDate: newItem.purchase_date,
         }
       };
@@ -206,6 +206,7 @@ const handleNewPurchaseSubmit = async (itemId) => {
           resetForm();
         })
         .catch(err => console.error(err));
+        
     }
   };
 

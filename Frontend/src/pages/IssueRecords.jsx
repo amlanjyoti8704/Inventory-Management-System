@@ -157,12 +157,11 @@ function IssueRecord() {
       //   status: 'requested',
       // });
       await axios.post(`${import.meta.env.VITE_BACKEND_URI}/api/issue`, {
-        item_id: selectedItemId,
-        issued_to: username.trim(),
-        quantity: parseInt(quantity),
-        department: department.trim(),
-        requested_by: userEmail,
-        status: 'requested',
+        ItemId: parseInt(selectedItemId),
+        IssuedTo: username.trim(),
+        Quantity: parseInt(quantity),
+        Department: department.trim(),
+        RequestedBy: userEmail
       });
   
       setSelectedItemId('');

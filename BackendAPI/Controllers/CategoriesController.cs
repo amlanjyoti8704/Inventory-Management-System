@@ -1,127 +1,90 @@
 using Microsoft.AspNetCore.Mvc;
-using MongoDB.Driver;
-using System.Collections.Generic;
-using Microsoft.Extensions.Configuration;
+using BackendAPI.Models;
+using BackendAPI.Services;
 
-[ApiController]
-[Route("api/[controller]")]
-public class CategoriesController : ControllerBase
+namespace BackendAPI.Controllers
 {
-    private readonly MongoDbContext _context;
-
-    public CategoriesController(MongoDbContext context)
+    /// <summary>
+    /// CRUD endpoints for inventory categories.
+    /// Supports search, sorting, and threshold filtering.
+    /// </summary>
+    [ApiController]
+    [Route("api/[controller]")]
+    public class CategoriesController : ControllerBase
     {
-        _context = context;
-    }
+        private readonly CategoryService _categoryService;
 
-    [HttpGet]
-    public IActionResult GetCategories([FromQuery] string search = "", [FromQuery] string sortBy = "category_id", [FromQuery] string sortOrder = "asc", [FromQuery] int? thresholdMin = null)
-    {
-        try
+        public CategoriesController(CategoryService categoryService)
         {
-            var filterBuilder = Builders<Category>.Filter;
-            var filters = new List<FilterDefinition<Category>>();
+            _categoryService = categoryService;
+        }
 
-            if (!string.IsNullOrWhiteSpace(search))
+        // GET api/categories?search=&sortBy=category_id&sortOrder=asc&thresholdMin=
+        [HttpGet]
+        public async Task<IActionResult> GetCategories(
+            [FromQuery] string search = "",
+            [FromQuery] string sortBy = "category_id",
+            [FromQuery] string sortOrder = "asc",
+            [FromQuery] int? thresholdMin = null)
+        {
+            try
             {
-                filters.Add(filterBuilder.Regex(c => c.CategoryName, new MongoDB.Bson.BsonRegularExpression(search, "i")));
+                var categories = await _categoryService.GetAllAsync(search, sortBy, sortOrder, thresholdMin);
+                return Ok(categories);
             }
-
-            if (thresholdMin.HasValue)
+            catch (Exception ex)
             {
-                filters.Add(filterBuilder.Gte(c => c.Threshold, thresholdMin.Value));
+                return StatusCode(500, new { message = "Error retrieving categories", error = ex.Message });
             }
+        }
 
-            var filter = filters.Count > 0
-                ? filterBuilder.And(filters)
-                : filterBuilder.Empty;
-
-            // Build sort definition
-            SortDefinition<Category> sort;
-            var sortBuilder = Builders<Category>.Sort;
-
-            sort = sortBy switch
+        // POST api/categories — Add a new category
+        [HttpPost]
+        public async Task<IActionResult> AddCategory([FromBody] Category category)
+        {
+            try
             {
-                "category_name" => sortOrder.ToLower() == "desc"
-                    ? sortBuilder.Descending(c => c.CategoryName)
-                    : sortBuilder.Ascending(c => c.CategoryName),
-                "threshold" => sortOrder.ToLower() == "desc"
-                    ? sortBuilder.Descending(c => c.Threshold)
-                    : sortBuilder.Ascending(c => c.Threshold),
-                _ => sortOrder.ToLower() == "desc"
-                    ? sortBuilder.Descending(c => c.CategoryId)
-                    : sortBuilder.Ascending(c => c.CategoryId)
-            };
-
-            var categories = _context.Categories
-                .Find(filter)
-                .Sort(sort)
-                .ToList();
-
-            return Ok(categories);
+                await _categoryService.AddAsync(category);
+                return Ok(new { message = "Category added successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error adding category", error = ex.Message });
+            }
         }
-        catch (Exception ex)
+
+        // PUT api/categories/{id} — Update an existing category
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateCategory(int id, [FromBody] Category category)
         {
-            return StatusCode(500, new { message = "Error retrieving categories", error = ex.Message });
+            try
+            {
+                var updated = await _categoryService.UpdateAsync(id, category);
+                return updated
+                    ? Ok(new { message = "Category updated successfully!" })
+                    : NotFound(new { message = "Category not found" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error updating category", error = ex.Message });
+            }
         }
-    }
 
-    [HttpPost]
-    public IActionResult AddCategory([FromBody] Category category)
-    {
-        try
+        // DELETE api/categories/{id} — Delete a category
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteCategory(int id)
         {
-            category.CategoryId = _context.GetNextSequence("category");
-
-            _context.Categories.InsertOne(category);
-
-            return Ok(new { message = "Category added successfully!" });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Error adding category", error = ex.Message });
-        }
-    }
-
-    [HttpPut("{id}")]
-    public IActionResult UpdateCategory(int id, [FromBody] Category category)
-    {
-        try
-        {
-            var filter = Builders<Category>.Filter.Eq(c => c.CategoryId, id);
-            var update = Builders<Category>.Update
-                .Set(c => c.CategoryName, category.CategoryName)
-                .Set(c => c.Threshold, category.Threshold);
-
-            var result = _context.Categories.UpdateOne(filter, update);
-
-            if (result.ModifiedCount > 0)
-                return Ok(new { message = "Category updated successfully!" });
-            else
-                return NotFound(new { message = "Category not found" });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Error updating category", error = ex.Message });
-        }
-    }
-
-    [HttpDelete("{id}")]
-    public IActionResult DeleteCategory(int id)
-    {
-        try
-        {
-            var filter = Builders<Category>.Filter.Eq(c => c.CategoryId, id);
-            var result = _context.Categories.DeleteOne(filter);
-
-            if (result.DeletedCount > 0)
-                return Ok(new { message = "Category deleted successfully!" });
-            else
-                return NotFound(new { message = "Category not found" });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Error deleting category", error = ex.Message });
+            try
+            {
+                var deleted = await _categoryService.DeleteAsync(id);
+                return deleted
+                    ? Ok(new { message = "Category deleted successfully!" })
+                    : NotFound(new { message = "Category not found" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error deleting category", error = ex.Message });
+            }
         }
     }
 }

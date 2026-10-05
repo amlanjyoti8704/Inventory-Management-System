@@ -129,7 +129,6 @@
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/BackendAPI.pdb
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/BCrypt.Net-Next.dll
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/BouncyCastle.Cryptography.dll
-/Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/DnsClient.dll
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/DotNetEnv.dll
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/MailKit.dll
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/Microsoft.AspNetCore.OpenApi.dll
@@ -139,15 +138,10 @@
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/Microsoft.IdentityModel.Tokens.dll
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/Microsoft.OpenApi.dll
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/MimeKit.dll
-/Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/MongoDB.Bson.dll
-/Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/MongoDB.Driver.dll
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/Newtonsoft.Json.dll
-/Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/SharpCompress.dll
-/Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/Snappier.dll
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/Sprache.dll
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/System.IdentityModel.Tokens.Jwt.dll
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/Twilio.dll
-/Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/ZstdSharp.dll
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/obj/Debug/net9.0/BackendAPI.csproj.AssemblyReference.cache
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/obj/Debug/net9.0/BackendAPI.GeneratedMSBuildEditorConfig.editorconfig
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/obj/Debug/net9.0/BackendAPI.AssemblyInfoInputs.cache
@@ -167,3 +161,4 @@
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/obj/Debug/net9.0/BackendAPI.pdb
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/obj/Debug/net9.0/BackendAPI.genruntimeconfig.cache
 /Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/obj/Debug/net9.0/ref/BackendAPI.dll
+/Users/amlanjyoti/Desktop/myProjects/Vocational training/testProject/BackendAPI/bin/Debug/net9.0/Npgsql.dll

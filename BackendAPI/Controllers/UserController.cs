@@ -1,291 +1,160 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using System.Security.Cryptography;
-using MongoDB.Driver;
+using BackendAPI.Models;
+using BackendAPI.Services;
+using MailKit.Net.Smtp;
+using MimeKit;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
-using Twilio.Types;
-using MailKit.Net.Smtp;
-using MailKit.Security;
-using MimeKit;
 
-[Route("api/[controller]")]
-[ApiController]
-public class UserController : ControllerBase
+namespace BackendAPI.Controllers
 {
-    private readonly MongoDbContext _context;
-    private readonly IConfiguration _configuration;
-
-    public UserController(MongoDbContext context, IConfiguration configuration)
+    /// <summary>
+    /// Handles user authentication, registration, profile, and password reset endpoints.
+    /// All business logic is delegated to UserService.
+    /// </summary>
+    [Route("api/[controller]")]
+    [ApiController]
+    public class UserController : ControllerBase
     {
-        _configuration = configuration;
-        _context = context;
-    }
+        private readonly UserService _userService;
+        private readonly IConfiguration _configuration;
 
-    [HttpPost("signup")]
-    public IActionResult Signup(User user)
-    {
-        user.Password = BCrypt.Net.BCrypt.HashPassword(user.Password);
-        user.Id = _context.GetNextSequence("Users");
-        user.Role = string.IsNullOrEmpty(user.Role) ? "user" : user.Role;
-        user.CreatedAt = DateTime.Now;
-
-        _context.Users.InsertOne(user);
-
-        return Ok(new
+        public UserController(UserService userService, IConfiguration configuration)
         {
-            message = "User created",
-            user = new
-            {
-                id = user.Id,
-                username = user.Username,
-                email = user.Email,
-                role = user.Role
-            }
-        });
-    }
-
-    [HttpPost("login")]
-    public IActionResult Login(LoginRequest login)
-    {
-        var filter = Builders<User>.Filter.Eq(u => u.Email, login.Email);
-        var user = _context.Users.Find(filter).FirstOrDefault();
-
-        if (user != null)
-        {
-            if (BCrypt.Net.BCrypt.Verify(login.Password, user.Password))
-            {
-                return Ok(new
-                {
-                    message = "Login successful",
-                    user = new
-                    {
-                        id = user.Id,
-                        username = user.Username,
-                        email = user.Email,
-                        role = user.Role
-                    }
-                });
-            }
+            _userService = userService;
+            _configuration = configuration;
         }
 
-        return Unauthorized(new { message = "Invalid credentials" });
-    }
-
-    [HttpGet]
-    public IActionResult GetUsers()
-    {
-        var users = _context.Users
-            .Find(Builders<User>.Filter.Empty)
-            .ToList();
-
-        var result = users.Select(u => new User
+        // POST api/user/signup — Register a new user
+        [HttpPost("signup")]
+        public async Task<IActionResult> Signup([FromBody] User user)
         {
-            Id = u.Id,
-            Username = u.Username,
-            Email = u.Email,
-            Role = u.Role
-        }).ToList();
-
-        return Ok(result);
-    }
-
-    [HttpPut("update-role")]
-    public async Task<IActionResult> UpdateUserRole([FromBody] RoleUpdateRequest request)
-    {
-        var filter = Builders<User>.Filter.Eq(u => u.Email, request.Email);
-        var update = Builders<User>.Update.Set(u => u.Role, request.Role);
-
-        var result = await _context.Users.UpdateOneAsync(filter, update);
-
-        if (result.ModifiedCount > 0)
-            return Ok(new { message = "Role updated successfully" });
-        else
-            return NotFound(new { message = "User not found" });
-    }
-
-    [HttpGet("me")]
-    public IActionResult GetUserByEmail([FromQuery] string email)
-    {
-        var filter = Builders<User>.Filter.Eq(u => u.Email, email);
-        var user = _context.Users.Find(filter).FirstOrDefault();
-
-        if (user != null)
-        {
+            var created = await _userService.SignupAsync(user);
             return Ok(new
             {
-                id = user.Id,
-                username = user.Username,
-                email = user.Email,
-                role = user.Role
+                message = "User created",
+                user = new { id = created.Id, username = created.Username, email = created.Email, role = created.Role }
             });
         }
 
-        return NotFound(new { message = "User not found" });
-    }
-
-    [HttpPost("forgot-password")]
-    public IActionResult ForgotPassword([FromBody] ForgotPasswordRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.Email))
-            return BadRequest(new { message = "Email is required" });
-
-        // 1. Check if user exists
-        var filter = Builders<User>.Filter.Eq(u => u.Email, request.Email);
-        var user = _context.Users.Find(filter).FirstOrDefault();
-
-        if (user == null)
-            return NotFound(new { message = "User not found" });
-
-        // 2. Generate secure token
-        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        var expiry = DateTime.UtcNow.AddHours(1);
-
-        // 3. Update user with token + expiry
-        var update = Builders<User>.Update
-            .Set(u => u.ResetToken, token)
-            .Set(u => u.ResetTokenExpiry, expiry);
-        _context.Users.UpdateOne(filter, update);
-
-        // 4. Send email using Mailtrap
-        var resetLink = $"http://localhost:5173/reset-password?token={token}";
-
-        var email = new MimeMessage();
-        email.From.Add(MailboxAddress.Parse("no-reply@example.com"));
-        email.To.Add(MailboxAddress.Parse(request.Email));
-        email.Subject = "Password Reset Request";
-        email.Body = new TextPart("plain")
+        // POST api/user/login — Authenticate with email + password
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginRequest login)
         {
-            Text = $"You requested a password reset.\nClick this link to reset your password:\n{resetLink}"
-        };
+            var user = await _userService.LoginAsync(login.Email, login.Password);
+            if (user == null)
+                return Unauthorized(new { message = "Invalid credentials" });
 
-        using var smtp = new SmtpClient();
-        smtp.Connect("sandbox.smtp.mailtrap.io", 587, MailKit.Security.SecureSocketOptions.StartTls);
-
-        // Replace with your actual Mailtrap SMTP credentials
-        smtp.Authenticate("d759da824c044c", "9233fb3dc20b92");
-
-        smtp.Send(email);
-        smtp.Disconnect(true);
-
-        return Ok(new
-        {
-            message = "Reset password link has been sent to your email.",
-            token = token // remove this line in production
-        });
-    }
-
-    [HttpPost("reset-password")]
-    public IActionResult ResetPassword([FromBody] ResetPasswordRequest req)
-    {
-        var filter = Builders<User>.Filter.And(
-            Builders<User>.Filter.Eq(u => u.ResetToken, req.Token),
-            Builders<User>.Filter.Gt(u => u.ResetTokenExpiry, DateTime.UtcNow)
-        );
-
-        var user = _context.Users.Find(filter).FirstOrDefault();
-
-        if (user == null)
-            return BadRequest(new { message = "Invalid or expired token." });
-
-        // Hash password
-        string hashedPassword = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
-
-        var update = Builders<User>.Update
-            .Set(u => u.Password, hashedPassword)
-            .Set(u => u.ResetToken, null)
-            .Set(u => u.ResetTokenExpiry, null);
-
-        _context.Users.UpdateOne(
-            Builders<User>.Filter.Eq(u => u.ResetToken, req.Token),
-            update);
-
-        return Ok(new { message = "Password reset successful." });
-    }
-
-    public class ResetPasswordRequest
-    {
-        public string Token { get; set; }
-        public string NewPassword { get; set; }
-    }
-
-    [HttpPost("request-password-reset")]
-    public IActionResult RequestPasswordReset([FromBody] PhoneRequest request)
-    {
-        var filter = Builders<User>.Filter.Eq(u => u.PhoneNumber, request.PhoneNumber);
-        var user = _context.Users.Find(filter).FirstOrDefault();
-
-        if (user == null)
-            return NotFound(new { message = "User not found" });
-
-        // Generate OTP token
-        var token = new Random().Next(100000, 999999).ToString(); // 6-digit code
-        var expiry = DateTime.UtcNow.AddMinutes(5);
-
-        var update = Builders<User>.Update
-            .Set(u => u.ResetToken, token)
-            .Set(u => u.ResetTokenExpiry, expiry);
-        _context.Users.UpdateOne(filter, update);
-
-        // Send SMS using Twilio
-        var accountSid = "AC58b121fb266609475e502722eaad7390";
-        var authToken = "45c04b1a1ceb4fcb718bb27eb5308b5d";
-        var twilioPhone = "+1234567890";
-
-        TwilioClient.Init(accountSid, authToken);
-
-        var phone = request.PhoneNumber;
-        if (!phone.StartsWith("+"))
-        {
-            phone = "+91" + phone;
+            return Ok(new
+            {
+                message = "Login successful",
+                user = new { id = user.Id, username = user.Username, email = user.Email, role = user.Role }
+            });
         }
 
-        var message = MessageResource.Create(
-            body: $"Your password reset code is {token}",
-            from: new Twilio.Types.PhoneNumber(twilioPhone),
-            to: new Twilio.Types.PhoneNumber(phone)
-        );
+        // GET api/user — List all users (admin)
+        [HttpGet]
+        public async Task<IActionResult> GetUsers()
+        {
+            var users = await _userService.GetAllUsersAsync();
+            return Ok(users);
+        }
 
-        return Ok(new { message = "OTP sent to phone" });
-    }
+        // PUT api/user/update-role — Change a user's role
+        [HttpPut("update-role")]
+        public async Task<IActionResult> UpdateUserRole([FromBody] RoleUpdateRequest request)
+        {
+            var updated = await _userService.UpdateRoleAsync(request.Email, request.Role);
+            return updated
+                ? Ok(new { message = "Role updated successfully" })
+                : NotFound(new { message = "User not found" });
+        }
 
-    public class PhoneRequest
-    {
-        public string PhoneNumber { get; set; }
-    }
+        // GET api/user/me?email=... — Get current user profile
+        [HttpGet("me")]
+        public async Task<IActionResult> GetUserByEmail([FromQuery] string email)
+        {
+            var user = await _userService.GetByEmailAsync(email);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
 
-    [HttpPost("verify-token-reset")]
-    public IActionResult VerifyTokenReset([FromBody] VerifyTokenRequest req)
-    {
-        var filter = Builders<User>.Filter.And(
-            Builders<User>.Filter.Eq(u => u.PhoneNumber, req.PhoneNumber),
-            Builders<User>.Filter.Eq(u => u.ResetToken, req.Token),
-            Builders<User>.Filter.Gt(u => u.ResetTokenExpiry, DateTime.UtcNow)
-        );
+            return Ok(new { id = user.Id, username = user.Username, email = user.Email, role = user.Role });
+        }
 
-        var user = _context.Users.Find(filter).FirstOrDefault();
+        // POST api/user/forgot-password — Send password reset email via Mailtrap
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Email))
+                return BadRequest(new { message = "Email is required" });
 
-        if (user == null)
-            return BadRequest(new { message = "Invalid or expired token." });
+            var (user, token) = await _userService.GenerateResetTokenByEmailAsync(request.Email);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
 
-        string hashedPassword = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
+            // Send reset link via email (Mailtrap SMTP)
+            var resetLink = $"http://localhost:5173/reset-password?token={token}";
+            var email = new MimeMessage();
+            email.From.Add(MailboxAddress.Parse("no-reply@example.com"));
+            email.To.Add(MailboxAddress.Parse(request.Email));
+            email.Subject = "Password Reset Request";
+            email.Body = new TextPart("plain")
+            {
+                Text = $"You requested a password reset.\nClick this link to reset your password:\n{resetLink}"
+            };
 
-        var update = Builders<User>.Update
-            .Set(u => u.Password, hashedPassword)
-            .Set(u => u.ResetToken, null)
-            .Set(u => u.ResetTokenExpiry, null);
+            using var smtp = new SmtpClient();
+            smtp.Connect("sandbox.smtp.mailtrap.io", 587, MailKit.Security.SecureSocketOptions.StartTls);
+            smtp.Authenticate("d759da824c044c", "9233fb3dc20b92");
+            smtp.Send(email);
+            smtp.Disconnect(true);
 
-        _context.Users.UpdateOne(
-            Builders<User>.Filter.Eq(u => u.PhoneNumber, req.PhoneNumber),
-            update);
+            return Ok(new { message = "Reset password link has been sent to your email.", token });
+        }
 
-        return Ok(new { message = "Password reset successful." });
-    }
+        // POST api/user/reset-password — Reset password using email token
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest req)
+        {
+            var success = await _userService.ResetPasswordAsync(req.Token, req.NewPassword);
+            return success
+                ? Ok(new { message = "Password reset successful." })
+                : BadRequest(new { message = "Invalid or expired token." });
+        }
 
-    public class VerifyTokenRequest
-    {
-        public string PhoneNumber { get; set; }
-        public string Token { get; set; }
-        public string NewPassword { get; set; }
+        // POST api/user/request-password-reset — Send OTP via SMS (Twilio)
+        [HttpPost("request-password-reset")]
+        public async Task<IActionResult> RequestPasswordReset([FromBody] PhoneRequest request)
+        {
+            var (user, token) = await _userService.GenerateResetTokenByPhoneAsync(request.PhoneNumber);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+
+            // Send OTP via Twilio SMS
+            var accountSid = "AC58b121fb266609475e502722eaad7390";
+            var authToken = "45c04b1a1ceb4fcb718bb27eb5308b5d";
+            var twilioPhone = "+1234567890";
+
+            TwilioClient.Init(accountSid, authToken);
+            var phone = request.PhoneNumber.StartsWith("+") ? request.PhoneNumber : "+91" + request.PhoneNumber;
+
+            MessageResource.Create(
+                body: $"Your password reset code is {token}",
+                from: new Twilio.Types.PhoneNumber(twilioPhone),
+                to: new Twilio.Types.PhoneNumber(phone)
+            );
+
+            return Ok(new { message = "OTP sent to phone" });
+        }
+
+        // POST api/user/verify-token-reset — Verify phone OTP and reset password
+        [HttpPost("verify-token-reset")]
+        public async Task<IActionResult> VerifyTokenReset([FromBody] VerifyTokenRequest req)
+        {
+            var success = await _userService.VerifyTokenAndResetAsync(req.PhoneNumber, req.Token, req.NewPassword);
+            return success
+                ? Ok(new { message = "Password reset successful." })
+                : BadRequest(new { message = "Invalid or expired token." });
+        }
     }
 }
